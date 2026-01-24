@@ -39,6 +39,14 @@ python main.py --input data/1.pdf --output output
 python main.py --input data --output output
 ```
 
+### 输出结构
+
+系统会为每个处理的 PDF 文件在输出目录下创建一个独立的子文件夹（以文件名为名），其中包含以下三个版本供对比和调试：
+
+- `raw.md`: OCR 识别后的原始 Markdown。
+- `regex.md`: 经过正则表达式初步清洗后的 Markdown。
+- `final.md`: 经过 LLM 语义正规化处理后的最终 Markdown。
+
 ### 参数说明
 
 - `--api_key`: LLM API 密钥（优先级高于 config.py）。
