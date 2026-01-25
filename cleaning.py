@@ -2,6 +2,7 @@ import re
 from typing import List, Tuple
 from openai import OpenAI
 from utils.logger_system import log_msg
+import config
 
 class RegexCleaning:
     def __init__(self, patterns: List[Tuple[str, str]]):
@@ -44,19 +45,68 @@ You are receiving a raw Markdown file generated from an OCR process. The text co
         self.client = OpenAI(api_key=api_key, base_url=base_url)
         self.model = model
         self.temperature = temperature
+        self.chunk_size = config.LLM_CONFIG.get("chunk_size", 2000)
+
+    def _chunk_text(self, content: str) -> List[str]:
+        """
+        基于段落的智能分块策略。
+        1. 按双换行(\n\n)分割段落。
+        2. 累积段落直到达到 chunk_size。
+        3. 若检测到 Markdown 标题且当前块已有内容，提前截断以保持结构完整。
+        """
+        paragraphs = content.split('\n\n')
+        chunks = []
+        current_chunk = []
+        current_length = 0
+
+        for para in paragraphs:
+            para_len = len(para)
+            
+            # 检查是否为标题（简单启发式：以 # 开头）
+            is_header = para.strip().startswith('#')
+            
+            # 截断条件：
+            # 1. 加上当前段落会显著超过 chunk_size
+            # 2. 当前段落是标题，且当前块已经有一定内容（比如超过 chunk_size 的 50%），则提前切分，让标题作为新块的开始
+            if (current_length + para_len > self.chunk_size) or \
+               (is_header and current_length > self.chunk_size * 0.5):
+                
+                if current_chunk:
+                    chunks.append('\n\n'.join(current_chunk))
+                    current_chunk = []
+                    current_length = 0
+            
+            current_chunk.append(para)
+            current_length += para_len + 2  # +2 for \n\n
+
+        if current_chunk:
+            chunks.append('\n\n'.join(current_chunk))
+        
+        return chunks
 
     def clean(self, content: str) -> str:
         log_msg("INFO", f"正在使用模型 {self.model} 进行 LLM 语义清洗...")
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": self.SYSTEM_PROMPT},
-                    {"role": "user", "content": content}
-                ],
-                temperature=self.temperature
-            )
-            return response.choices[0].message.content or ""
-        except Exception as e:
-            log_msg("ERROR", f"LLM 清洗异常: {str(e)}")
-            return content
+        
+        chunks = self._chunk_text(content)
+        log_msg("INFO", f"分块逻辑启动: 共 {len(chunks)} 个块 (Chunk Size: {self.chunk_size})")
+        
+        cleaned_chunks = []
+        for i, chunk in enumerate(chunks):
+            log_msg("INFO", f"正在处理第 {i+1}/{len(chunks)} 个块 (长度: {len(chunk)})...")
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": self.SYSTEM_PROMPT},
+                        {"role": "user", "content": chunk}
+                    ],
+                    temperature=self.temperature
+                )
+                cleaned_text = response.choices[0].message.content or ""
+                cleaned_chunks.append(cleaned_text)
+            except Exception as e:
+                log_msg("ERROR", f"LLM 清洗块 {i+1} 异常: {str(e)}")
+                # 发生错误时保留原始内容，避免数据丢失
+                cleaned_chunks.append(chunk)
+        
+        return '\n\n'.join(cleaned_chunks)

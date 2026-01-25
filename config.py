@@ -4,10 +4,11 @@ LLM_CONFIG = {
     "model": "deepseek-chat",
     "temperature": 0.1,
     "max_tokens": 4096,
+    "chunk_size": 2000,
 }
 
 MONKEY_OCR_CONFIG = {
-    "base_url": "http://127.0.0.1:7861",
+    "base_url": "http://vlrlabmonkey.xyz:7685",
     "timeout": 120,
 }
 
