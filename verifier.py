@@ -32,9 +32,21 @@ class MarkdownVerifier:
         return passed
 
     def check_hallucination(self, text: str) -> bool:
-        for phrase in self.forbidden_phrases:
-            if phrase in text:
-                log_msg("WARNING", f"检测到幻觉短语: '{phrase}'")
+        """检查是否有 LLM 对话性前缀（只检查行首出现的短语）。"""
+        preamble_patterns = [
+            r'^\s*好的[，,。！!：:\s]',
+            r'^\s*以下是',
+            r'^\s*当然[，,。！!：:\s]',
+            r'^\s*我已为你',
+            r'^\s*为您清洗',
+            r'^\s*Here is the cleaned',
+            r'^\s*Markdown\s*内容如下',
+        ]
+        for pattern in preamble_patterns:
+            match = re.search(pattern, text, re.MULTILINE)
+            if match:
+                matched_line = text[match.start():text.find('\n', match.start())]
+                log_msg("WARNING", f"检测到幻觉短语: '{matched_line.strip()}'")
                 return False
         return True
 
