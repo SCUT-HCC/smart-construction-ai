@@ -9,3 +9,6 @@ task_log.json
 .idea/
 .vscode/
 *.log
+test_run/
+test_output/
+templates/awesome-claude-skills/

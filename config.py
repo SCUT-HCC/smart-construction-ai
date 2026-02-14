@@ -8,7 +8,7 @@ LLM_CONFIG = {
 }
 
 MONKEY_OCR_CONFIG = {
-    "base_url": "http://vlrlabmonkey.xyz:7685",
+    "base_url": "http://localhost:7861",
     "timeout": 120,
 }
 

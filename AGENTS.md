@@ -6,24 +6,13 @@
 > 2. 你的所有思考过程和回复必须使用 **简体中文**。
 
 ## 1. 项目元数据 (Metadata)
-- **核心目标**: 构建基于群体智能与进化算法的多Agent系统，解决复杂代码问题的自动化能力
 - **项目类型**: MVP / 研究性项目
-- **前端架构**: 无（纯后端系统）
-- **后端架构**: Python 3.12 + asyncio
-- **多Agent框架**: LangGraph (StateGraph + Native Tool Calling)
+- **多Agent框架**: OpenCode
 - **数据存储**: 无特殊存储需求（基于内存与文件系统）
 - **版本管理**: Git
 
 ## 2. 常用命令 (Commands)
-- **安装依赖**:
-  ```bash
-  conda create -n swarm-evo python=3.12 -y
-  conda activate swarm-evo
-  pip install -r requirements.txt
-  pip install -r requirements_agent.txt  # Agent环境依赖
-  ```
-- **启动项目**: `python main.py` 或通过 MLE-bench Docker 运行（详见 README.md）
-- **测试**: 暂无自动化测试命令
+
 
 ## 3. 标准作业程序 (Standard Operating Procedure)
 > **Agent 必须严格遵守以下生命周期执行任务：**
@@ -109,6 +98,9 @@
 - **觉得当前任务复杂，需要梳理思路？**
   - -> 请立即使用 `draft.md`。
   - *行动*: 在此文件中列出你的思考过程、待办事项和草稿代码，清理工作记忆。
+
+- **不了解OpenCode的信息和SDK？**
+  - -> 请立即阅读网页 `https://opencode.ai/docs/`。
 
 ## 6. 输出规范
 - 所有输出语言: **中文**
