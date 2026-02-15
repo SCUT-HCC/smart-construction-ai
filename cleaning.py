@@ -35,10 +35,95 @@ class LLMCleaning:
         "5. 将行首带圆圈数字或括号数字转为标准有序列表\n"
         "6. 移除装饰性符号\n"
         "7. 修复明显的 Markdown 表格格式问题（表头分隔行每列只需 3 个短横线）\n"
+        "8. 删除 OCR 残留的水印文字，如 'CHINA SOUTHERN POWER GRID' 及其变体（可能跨行出现）\n"
+        "\n"
+        "## 标题层级规范\n"
+        "根据原文的层级结构合理分配标题级别：\n"
+        "- 文档标题（封面标题、总标题）使用 `#`（H1），整篇文档最多 1-2 个 H1\n"
+        "- 章节标题（如 '第一章'、'一、'、'1.'）使用 `##`（H2）\n"
+        "- 子节标题（如 '1.1'、'（一）'）使用 `###`（H3）\n"
+        "- 更细的小节使用 `####`（H4）\n"
+        "- 不要将所有标题都设为同一级别\n"
         "\n"
         "## 输出格式\n"
         "直接输出 GitHub Flavored Markdown。第一个字符必须是原文内容的一部分。"
     )
+
+    # --- LaTeX symbol → Unicode mapping ---
+    # Only simple symbol-level LaTeX; complex math formulas are preserved.
+    LATEX_SYMBOL_MAP = {
+        r'\star': '★',
+        r'\bigstar': '★',
+        r'\geqslant': '≥',
+        r'\leqslant': '≤',
+        r'\geq': '≥',
+        r'\leq': '≤',
+        r'\ge': '≥',
+        r'\le': '≤',
+        r'\times': '×',
+        r'\pm': '±',
+        r'\mp': '∓',
+        r'\approx': '≈',
+        r'\neq': '≠',
+        r'\ne': '≠',
+        r'\rightarrow': '→',
+        r'\leftarrow': '←',
+        r'\leftrightarrow': '↔',
+        r'\Rightarrow': '⇒',
+        r'\Leftarrow': '⇐',
+        r'\uparrow': '↑',
+        r'\downarrow': '↓',
+        r'\infty': '∞',
+        r'\degree': '°',
+        r'\circ': '°',
+        r'\alpha': 'α',
+        r'\beta': 'β',
+        r'\gamma': 'γ',
+        r'\delta': 'δ',
+        r'\epsilon': 'ε',
+        r'\theta': 'θ',
+        r'\lambda': 'λ',
+        r'\mu': 'μ',
+        r'\pi': 'π',
+        r'\sigma': 'σ',
+        r'\omega': 'ω',
+        r'\phi': 'φ',
+        r'\psi': 'ψ',
+        r'\rho': 'ρ',
+        r'\tau': 'τ',
+        r'\chi': 'χ',
+        r'\Delta': 'Δ',
+        r'\Sigma': 'Σ',
+        r'\Omega': 'Ω',
+        r'\Pi': 'Π',
+        r'\Phi': 'Φ',
+        r'\sqrt': '√',
+        r'\cdot': '·',
+        r'\bullet': '•',
+        r'\div': '÷',
+        r'\sim': '~',
+        r'\propto': '∝',
+        r'\perp': '⊥',
+        r'\parallel': '∥',
+        r'\subset': '⊂',
+        r'\supset': '⊃',
+        r'\subseteq': '⊆',
+        r'\supseteq': '⊇',
+        r'\in': '∈',
+        r'\notin': '∉',
+        r'\cup': '∪',
+        r'\cap': '∩',
+        r'\emptyset': '∅',
+        r'\forall': '∀',
+        r'\exists': '∃',
+        r'\neg': '¬',
+        r'\land': '∧',
+        r'\lor': '∨',
+        r'\triangle': '△',
+        r'\square': '□',
+        r'\boxdot': '☑',
+        r'\checkmark': '✓',
+    }
 
     def __init__(self, api_key: str, base_url: str, model: str, temperature: float = 0.1):
         self.client = OpenAI(api_key=api_key, base_url=base_url)
@@ -79,9 +164,191 @@ class LLMCleaning:
         
         return chunks
 
+    @classmethod
+    def _convert_latex_symbols(cls, text: str) -> str:
+        """Convert simple LaTeX symbol expressions to Unicode characters.
+        
+        Handles patterns like:
+        - $\symbol$ → unicode
+        - $\symbol$ with surrounding text preserved
+        - Degree patterns like $45^{\circ}$ → 45°
+        """
+        # Handle degree patterns first: $45^{\circ}$, $90^{\circ}$, etc.
+        text = re.sub(
+            r'\$\s*(\d+)\s*\^\s*\{?\s*\\circ\s*\}?\s*\$',
+            r'\1°',
+            text
+        )
+        # Handle standalone $\circ$ → °
+        text = re.sub(r'\$\s*\\circ\s*\$', '°', text)
+        
+        # Handle $^\circ$ pattern (degree without number)
+        text = re.sub(r'\$\s*\^\s*\{?\s*\\circ\s*\}?\s*\$', '°', text)
+        
+        # Sort by length (longest first) to avoid partial matches
+        # e.g., \geqslant before \geq
+        sorted_symbols = sorted(cls.LATEX_SYMBOL_MAP.keys(), key=len, reverse=True)
+        
+        for latex_cmd in sorted_symbols:
+            unicode_char = cls.LATEX_SYMBOL_MAP[latex_cmd]
+            # Escape the backslash for regex
+            escaped = re.escape(latex_cmd)
+            # Match $\cmd$ with optional surrounding whitespace inside $...$
+            # This pattern matches the symbol wrapped in $ delimiters
+            pattern = r'\$\s*' + escaped + r'\s*\$'
+            text = re.sub(pattern, unicode_char, text)
+        
+        # Handle $\symbol VALUE$ patterns (e.g. $\leq 0.5$ → ≤0.5, $\geq 40$ → ≥40)
+        # Only for comparison/relation symbols followed by simple values
+        comparison_symbols = {
+            r'\geqslant': '≥', r'\leqslant': '≤',
+            r'\geq': '≥', r'\leq': '≤',
+            r'\ge': '≥', r'\le': '≤',
+            r'\approx': '≈', r'\neq': '≠', r'\ne': '≠',
+        }
+        sorted_comp = sorted(comparison_symbols.keys(), key=len, reverse=True)
+        for latex_cmd in sorted_comp:
+            unicode_char = comparison_symbols[latex_cmd]
+            escaped = re.escape(latex_cmd)
+            # Match $\cmd VALUE$ where VALUE is simple (numbers, dots, %, letters)
+            pattern = r'\$\s*' + escaped + r'\s*([0-9][0-9a-zA-Z.,%]*)\s*\$'
+            text = re.sub(pattern, unicode_char + r'\1', text)
+        
+        return text
+
     @staticmethod
-    def _post_process(text: str) -> str:
-        """对 LLM 输出进行后处理：移除对话前缀/后缀、修复异常表格行。"""
+    def _fix_table_separators(text: str) -> str:
+        """Fix abnormally long table separator lines.
+        
+        Handles:
+        1. Lines like |---|---|...| where dashes are excessively long
+        2. Lines starting with | but not ending with | (broken separators)
+        3. Pure dash lines (---...---) without pipes
+        """
+        lines = text.split('\n')
+        fixed_lines = []
+        
+        for line in lines:
+            stripped = line.strip()
+            
+            # Case 1: Line with pipes that looks like a table separator
+            # Match lines that are mostly dashes, pipes, colons, and spaces
+            if '|' in stripped and len(stripped) > 500:
+                # Check if it's a separator line (mostly -|: characters)
+                non_sep_chars = re.sub(r'[\s\-|:]', '', stripped)
+                if len(non_sep_chars) < len(stripped) * 0.05:  # >95% separator chars
+                    # Compress each cell's dashes to exactly ---
+                    fixed = re.sub(r'-{3,}', '---', stripped)
+                    fixed_lines.append(fixed)
+                    continue
+            
+            # Case 2: Pipe-delimited separator line (normal length check too)
+            if re.match(r'^\|[\s\-:|]+\|?$', stripped) and len(stripped) > 200:
+                fixed = re.sub(r'-{3,}', '---', stripped)
+                # Ensure it ends with |
+                if not fixed.endswith('|'):
+                    fixed += '|'
+                fixed_lines.append(fixed)
+                continue
+            
+            # Case 3: Pure dash lines (no pipes) that are excessively long
+            if re.match(r'^-{50,}$', stripped):
+                fixed_lines.append('---')
+                continue
+            
+            fixed_lines.append(line)
+        
+        return '\n'.join(fixed_lines)
+
+    @staticmethod
+    def _clean_html_tags(text: str) -> str:
+        """Clean residual HTML tags from OCR output.
+        
+        - Convert simple HTML tables to GFM Markdown tables
+        - Remove other HTML tags while preserving inner text
+        """
+        # --- Convert HTML tables to Markdown ---
+        def _html_table_to_markdown(match: re.Match) -> str:
+            """Convert a simple HTML <table>...</table> to GFM markdown."""
+            table_html = match.group(0)
+            
+            try:
+                # Extract rows
+                rows = re.findall(r'<tr[^>]*>(.*?)</tr>', table_html, re.DOTALL)
+                if not rows:
+                    return table_html  # Can't parse, return as-is
+                
+                md_rows = []
+                max_cols = 0
+                
+                for row in rows:
+                    # Extract cells (td or th)
+                    cells = re.findall(r'<(?:td|th)[^>]*>(.*?)</(?:td|th)>', row, re.DOTALL)
+                    if not cells:
+                        continue
+                    
+                    # Clean cell content: remove inner HTML tags, normalize whitespace
+                    cleaned_cells = []
+                    for cell in cells:
+                        # Remove <br> tags → space
+                        cell = re.sub(r'<br\s*/?>', ' ', cell)
+                        # Remove <sup>, <sub> etc. but keep text
+                        cell = re.sub(r'<[^>]+>', '', cell)
+                        # Normalize whitespace
+                        cell = ' '.join(cell.split())
+                        cleaned_cells.append(cell.strip())
+                    
+                    if cleaned_cells:
+                        max_cols = max(max_cols, len(cleaned_cells))
+                        md_rows.append(cleaned_cells)
+                
+                if not md_rows:
+                    return ''
+                
+                # Pad rows to max_cols
+                for i in range(len(md_rows)):
+                    while len(md_rows[i]) < max_cols:
+                        md_rows[i].append('')
+                
+                # Build markdown table
+                result_lines = []
+                # First row as header
+                result_lines.append('| ' + ' | '.join(md_rows[0]) + ' |')
+                # Separator
+                result_lines.append('| ' + ' | '.join(['---'] * max_cols) + ' |')
+                # Data rows
+                for row in md_rows[1:]:
+                    result_lines.append('| ' + ' | '.join(row) + ' |')
+                
+                return '\n'.join(result_lines)
+            
+            except Exception:
+                # If parsing fails, just strip the tags
+                cleaned = re.sub(r'<[^>]+>', ' ', table_html)
+                return ' '.join(cleaned.split())
+        
+        # Convert HTML tables to Markdown
+        text = re.sub(
+            r'<table[^>]*>.*?</table>',
+            _html_table_to_markdown,
+            text,
+            flags=re.DOTALL | re.IGNORECASE
+        )
+        
+        # Remove any remaining HTML tags (preserve inner text)
+        # Common self-closing tags
+        text = re.sub(r'<br\s*/?>', '\n', text, flags=re.IGNORECASE)
+        text = re.sub(r'<hr\s*/?>', '\n---\n', text, flags=re.IGNORECASE)
+        # Remove <sup>text</sup> → text (keep text)
+        text = re.sub(r'</?(?:sup|sub|em|strong|b|i|u|s|span|div|p|font)[^>]*>', '', text, flags=re.IGNORECASE)
+        # Remove any other remaining HTML tags
+        text = re.sub(r'</?[a-zA-Z][a-zA-Z0-9]*[^>]*>', '', text, flags=re.IGNORECASE)
+        
+        return text
+
+    @classmethod
+    def _post_process(cls, text: str) -> str:
+        """对 LLM 输出进行后处理：移除对话前缀/后缀、修复异常表格行、转换LaTeX符号、清理HTML。"""
         
         # --- 1. 移除 LLM 对话性前缀 ---
         preamble_patterns = [
@@ -118,20 +385,24 @@ class LLMCleaning:
         for pattern in suffix_patterns:
             text = re.sub(pattern, '', text)
         
-        # --- 3. 移除代码块包裹 ---
+        # --- 3. 移除残留水印 ---
+        text = re.sub(
+            r'(?i)CHINA\s+SOUTHERN\s+POWER\s+GRID(?:\s+CO\.?\s*,?\s*LTD\.?)?\s*',
+            '', text
+        )
+        
+        # --- 4. 移除代码块包裹 ---
         text = re.sub(r'^\s*```(?:markdown)?\s*\n', '', text)
         text = re.sub(r'\n\s*```\s*$', '', text)
         
-        # --- 4. 修复异常长的表格分隔行 ---
-        # 正常的 GFM 表格分隔行每个单元格只需 3 个短横线
-        # 如果某行是纯表格分隔行且超过 500 字符，则压缩之
-        def _fix_table_separator(match: re.Match) -> str:
-            line = match.group(0)
-            # 将每个单元格中过长的 ----- 压缩为 ---
-            fixed = re.sub(r'-{3,}', '---', line)
-            return fixed
+        # --- 5. 修复异常长的表格分隔行 ---
+        text = cls._fix_table_separators(text)
         
-        text = re.sub(r'^\|[\s\-:|]+\|$', _fix_table_separator, text, flags=re.MULTILINE)
+        # --- 6. LaTeX 符号 → Unicode 转换 ---
+        text = cls._convert_latex_symbols(text)
+        
+        # --- 7. 清理残留 HTML 标签 ---
+        text = cls._clean_html_tags(text)
         
         return text.strip()
 

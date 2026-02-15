@@ -25,7 +25,7 @@ CLEANING_CONFIG = {
         (r'^\s*\$\\textcircled\{(\d+)\}\$\s*', r'\1. '),
         (r'\$\\textcircled\{(\d+)\}\$', r'(\1)'),
         (r'(?<=\S)  \n', r'\n'),
-        (r'(?i)CHINA\s+SOUTHERN\s+POWER\s+GRID\s+CO\.,\s+LTD\.?', ''),
+        (r'(?i)CHINA\s+SOUTHERN\s+POWER\s+GRID(?:\s+CO\.?\s*,?\s*LTD\.?)?\s*', ''),
         (r'^\s*[批★]\s*$\n', ''),
         (r'^\s*\d+\s*$\n', ''),
     ]
