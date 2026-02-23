@@ -1,8 +1,9 @@
-<!-- Generated: 2026-02-20 | Files scanned: 784 lines | Token estimate: ~650 -->
+<!-- Generated: 2026-02-23 | Files scanned: 9 | Token estimate: ~650 -->
 
 # 系统架构 - 南网施工方案智能辅助系统
 
 ## 项目类型
+
 单体应用（MVP）- PDF 处理与清洗管道
 
 ## 核心数据流
@@ -18,7 +19,7 @@ data/      raw.md     regex.md     final.md       日志系统    output/N/
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                      入口层 (Entry)                          │
-│  main.py (43 行)                                             │
+│  main.py (50 行)                                             │
 │  └─ 参数解析 → 组件初始化 → 调度执行                         │
 └─────────────────────────────────────────────────────────────┘
                               │
@@ -41,8 +42,8 @@ data/      raw.md     regex.md     final.md       日志系统    output/N/
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                   基础设施层 (Infrastructure)                │
-│  config.py (40 行) - 全局配置                                │
-│  utils/logger_system.py (48 行) - 日志系统                   │
+│  config.py (45 行) - 全局配置                                │
+│  utils/logger_system.py (48 行) - 日志系统（标准库 logging）│
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -50,8 +51,8 @@ data/      raw.md     regex.md     final.md       日志系统    output/N/
 
 | 服务 | 用途 | 端点 |
 |------|------|------|
-| MonkeyOCR | PDF → Markdown 转换 | http://localhost:7861 |
-| DeepSeek LLM | 语义清洗与重构 | http://110.42.53.85:11081/v1 |
+| MonkeyOCR | PDF → Markdown 转换 | http://localhost:7861/parse |
+| DeepSeek LLM | 语义清洗与重构 | http://110.42.53.85:11081/v1/chat/completions |
 | Docker | OCR 服务容器化 | monkeyocr-api |
 
 ## 数据资源
