@@ -48,6 +48,13 @@ class MarkdownVerifier:
                 matched_line = text[match.start():text.find('\n', match.start())]
                 log_msg("WARNING", f"检测到幻觉短语: '{matched_line.strip()}'")
                 return False
+        for phrase in self.forbidden_phrases:
+            pattern = r'^\s*' + re.escape(phrase)
+            match = re.search(pattern, text, re.MULTILINE)
+            if match:
+                matched_line = text[match.start():text.find('\n', match.start())]
+                log_msg("WARNING", f"检测到禁用短语: '{matched_line.strip()}'")
+                return False
         return True
 
     def check_structure(self, text: str) -> bool:

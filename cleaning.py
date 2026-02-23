@@ -428,7 +428,7 @@ class LLMCleaning:
                 cleaned_text = self._post_process(cleaned_text)
                 cleaned_chunks.append(cleaned_text)
             except Exception as e:
-                log_msg("ERROR", f"LLM 清洗块 {i+1} 异常: {str(e)}")
+                log_msg("WARNING", f"LLM 清洗块 {i+1} 异常，降级保留原文: {str(e)}")
                 cleaned_chunks.append(chunk)
         
         return '\n\n'.join(cleaned_chunks)
