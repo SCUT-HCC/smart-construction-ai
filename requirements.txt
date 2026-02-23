@@ -13,6 +13,7 @@ loguru==0.7.3
 openai==2.21.0
 packaging @ file:///home/task_176104885106445/conda-bld/packaging_1761049078006/work
 pydantic==2.12.5
+python-dotenv==1.2.1
 pydantic_core==2.41.5
 PyYAML==6.0.3
 qmd==0.1.0
