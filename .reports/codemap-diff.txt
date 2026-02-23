@@ -1,0 +1,67 @@
+# Codemap Analysis Report
+Generated: 2026-02-20 20:24:32
+
+## Summary
+- **Project Type**: 单体应用（MVP）- PDF 处理与清洗管道
+- **Files Scanned**: 8 archivos Python principales (784 líneas totales)
+- **Total Project Files**: 207 archivos (.py + .md)
+- **Existing Codemaps**: 4 archivos (architecture, backend, data, dependencies)
+
+## Architecture Overview
+```
+PDF → OCR → Regex Cleaning → LLM Cleaning → Verification → Markdown Output
+```
+
+## Core Modules (784 lines total)
+1. main.py (43 líneas) - Punto de entrada
+2. processor.py (90 líneas) - Orquestador del pipeline
+3. cleaning.py (434 líneas) - Motor de limpieza (Regex + LLM)
+4. config.py (40 líneas) - Configuración global
+5. crawler.py (69 líneas) - Cliente OCR
+6. verifier.py (60 líneas) - Validación de calidad
+7. utils/logger_system.py (48 líneas) - Sistema de logging
+
+## Files Added/Removed/Modified Since Last Scan
+**Status**: NO CHANGES DETECTED
+- Los codemaps existentes están actualizados (generados 2026-02-20)
+- La estructura del código coincide con la documentación actual
+- Total de líneas: 784 (sin cambios significativos)
+
+## New Dependencies Detected
+**Status**: NO NEW DEPENDENCIES
+- openai (cliente LLM compatible con DeepSeek)
+- requests (llamadas HTTP al OCR)
+- tqdm (barras de progreso)
+
+## Architecture Changes
+**Status**: NO ARCHITECTURE CHANGES
+- Estructura modular estable: Entry → Core → Infrastructure
+- Pipeline de procesamiento sin modificaciones
+- Dependencias externas sin cambios:
+  - MonkeyOCR (localhost:7861)
+  - DeepSeek LLM (110.42.53.85:11081)
+
+## Codemaps Freshness Status
+| Codemap | Last Updated | Status | Token Estimate |
+|---------|--------------|--------|----------------|
+| architecture.md | 2026-02-20 | ✓ FRESH | ~650 tokens |
+| backend.md | 2026-02-20 | ✓ FRESH | ~500 tokens |
+| data.md | 2026-02-20 | ✓ FRESH | ~400 tokens |
+| dependencies.md | 2026-02-20 | ✓ FRESH | ~350 tokens |
+
+**Total Token Estimate**: ~1900 tokens
+
+## Staleness Warnings
+**None** - Todos los codemaps fueron generados hoy
+
+## Recommendations
+1. ✓ Los codemaps están actualizados y no requieren regeneración
+2. ✓ La estructura token-lean se mantiene (todos < 1000 tokens)
+3. → Considerar agregar codemap para futuros módulos de LangChain/LangGraph (Phase 2-4)
+4. → Monitorear cuando se agreguen ChromaDB y LightRAG
+
+## Change Percentage
+**0%** - Sin cambios respecto a la versión anterior
+
+## Next Review Date
+Sugerido: 2026-02-27 (o después de cambios significativos en el código)
