@@ -1,17 +1,17 @@
-# Herald 代码规范 — 基于 nanobot 风格提炼
+# 南网施工方案智能辅助系统 — 代码规范
 
-> 本规范从 nanobot (HKUDS) 源码中提炼，作为 Herald 项目代码审查的判断标准。
+> 本规范为南网施工方案智能辅助系统的代码审查判断标准，基于 nanobot 风格提炼并适配本项目。
 
 ## 1. 模块级：一个文件只做一件事
 
 - 每个 `.py` 文件对应一个**清晰的职责**
-  - ✅ `loop.py` — agent 循环 | `context.py` — 上下文构建 | `memory.py` — 记忆读写
-  - ❌ 一个文件同时处理消息路由、工具注册和会话管理
+  - ✅ `cleaning.py` — LLM 清洗 | `processor.py` — 文档处理 | `verifier.py` — 格式验证
+  - ❌ 一个文件同时处理 OCR 调用、文本清洗和格式验证
 - 模块 docstring 用**一句话**说清楚这个文件干什么：
   ```python
   """Agent loop: the core processing engine."""
   ```
-- 文件行数控制在 **300 行以内**（nanobot 最长的 `loop.py` 约 350 行，已经是极限）
+- 文件行数控制在 **300 行以内**（超过即考虑拆分）
 
 ## 2. 类设计：dataclass 优先，继承克制
 
@@ -48,8 +48,8 @@ class TelegramConfig(BaseModel):
 ### 2.3 抽象基类简洁明了
 
 - ABC 只定义**接口契约**，不塞逻辑
-- 公共逻辑放在 ABC 的非抽象方法里（如 `BaseChannel._handle_message`）
-- nanobot 的 `Tool` 基类：4 个抽象属性/方法（`name`, `description`, `parameters`, `execute`），加一个通用的 `to_schema()`
+- 公共逻辑放在 ABC 的非抽象方法里
+- 抽象基类保持精简：只定义必要的抽象属性/方法
 
 ### 2.4 继承最多一层
 
@@ -62,7 +62,6 @@ class TelegramConfig(BaseModel):
 
 - **目标**：20-40 行
 - **上限**：60 行（超过就拆）
-- nanobot 的 `_process_message` 约 50 行，已经是最长的方法
 
 ### 3.2 参数设计
 
@@ -171,58 +170,40 @@ msg = await asyncio.wait_for(self.bus.consume_inbound(), timeout=1.0)
 
 ```python
 # 1. 标准库
-import asyncio
 import json
+import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, Optional
 
 # 2. 第三方库
-from loguru import logger
 from pydantic import BaseModel
+from openai import OpenAI
 
-# 3. 项目内部（使用绝对导入）
-from nanobot.bus.events import InboundMessage
-from nanobot.agent.tools.registry import ToolRegistry
+# 3. 项目内部
+from utils.logger_system import log_msg, log_json
+from config import LLM_CONFIG
 ```
 
 ### 8.2 延迟导入
 
-- 循环依赖用**函数内 import** 解决（nanobot 在 `_consolidate_memory` 等方法中这样做）
-- 可选依赖也用延迟导入：`from nanobot.channels.telegram import TelegramChannel`
+- 循环依赖用**函数内 import** 解决
+- 可选依赖也用延迟导入
 
 ## 9. 日志
 
-- 使用 `loguru` 的 `logger`，禁用 `print()`
+- 使用 `utils/logger_system.py` 提供的 `log_msg()` 和 `log_json()`，**禁用 `print()`**
 - 级别使用：
-  - `logger.debug` — 内部细节（工具参数、缓存命中）
-  - `logger.info` — 关键事件（启动、消息处理、任务完成）
-  - `logger.warning` — 非致命问题（配置加载失败、文件缺失）
-  - `logger.error` — 错误（LLM 调用失败、工具执行异常）
+  - `log_msg("INFO", ...)` — 关键事件（启动、处理完成、阶段切换）
+  - `log_msg("WARNING", ...)` — 非致命问题（配置加载失败、文件缺失）
+  - `log_msg("ERROR", ...)` — 错误（自动抛出异常）
+- 结构化数据记录使用 `log_json(data_dict)`
 
-## 10. 配置与注册表模式
+## 10. 配置管理
 
-### 10.1 注册表模式（Registry Pattern）
-
-nanobot 用 `ProviderSpec` + `PROVIDERS` 元组实现了**声明式注册表**：
-
-```python
-# 添加新 provider 只需要加一个 ProviderSpec，不需要改任何 if-elif
-PROVIDERS: tuple[ProviderSpec, ...] = (
-    ProviderSpec(name="openrouter", keywords=("openrouter",), ...),
-    ProviderSpec(name="anthropic", keywords=("anthropic", "claude"), ...),
-    ...
-)
-```
-
-- 新增 provider 只需加一条记录，**零代码修改**
-- 所有行为（env 变量、前缀、特殊参数）都由数据驱动
-- Herald 的 Tool 注册也遵循此模式
-
-### 10.2 配置 Schema
-
-- Pydantic `BaseModel` 定义，嵌套结构清晰
-- 配置加载：JSON → snake_case 转换 → Pydantic 验证
-- 不要把配置散落在代码里，集中到 `config/schema.py`
+- 配置集中在 `config.py`，通过模块级常量暴露（`LLM_CONFIG`, `MONKEY_OCR_CONFIG` 等）
+- 敏感信息（API Key）通过环境变量读取：`os.environ.get("SCA_LLM_API_KEY")`
+- Pydantic `BaseModel` 用于结构化数据校验
+- 不要把配置散落在代码里，集中管理
 
 ## 11. 安全
 
@@ -238,7 +219,7 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
 | **God class** | 单个类超过 300 行或承担 3 个以上职责 |
 | **过度抽象** | 只有一个实现的 ABC、不必要的设计模式 |
 | **裸 dict 传递** | 应该用 dataclass/Pydantic 的地方用 dict |
-| **print 调试** | 任何 `print()` 调用 |
+| **print 调试** | 任何 `print()` 调用（必须使用 `log_msg()`） |
 | **类型缺失** | 函数签名缺少类型注解 |
 | **大函数** | 超过 60 行的函数 |
 | **深层嵌套** | 超过 3 层缩进（if 套 for 套 if） |
@@ -250,4 +231,4 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
 
 ---
 
-*本规范基于 nanobot (HKUDS) 源码分析，版本日期 2026-02-21。*
+*本规范基于 nanobot 风格提炼并适配本项目，更新于 2026-02-23。*

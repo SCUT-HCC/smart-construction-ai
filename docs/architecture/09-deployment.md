@@ -26,7 +26,7 @@ pip install -r requirements.txt
 |------|---|------|
 | LLM | openai (httpx) | DeepSeek / 其他 OpenAI 兼容 API |
 | 验证 | pydantic | 数据结构校验 |
-| 日志 | loguru | 结构化日志 |
+| 日志 | logging (stdlib) | 日志（通过 utils/logger_system.py 封装） |
 | OCR | requests | MonkeyOCR HTTP 客户端 |
 | 进度 | tqdm | 批量处理进度条 |
 | 向量检索 | qmd + sqlite-vec | 章节级案例语义检索（替代 ChromaDB） |
