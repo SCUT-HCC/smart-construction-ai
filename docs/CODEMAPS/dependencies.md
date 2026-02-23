@@ -1,33 +1,49 @@
-<!-- Generated: 2026-02-23 | Files scanned: requirements.txt + config.py | Token estimate: ~350 -->
+<!-- Generated: 2026-02-23 | Files scanned: requirements.txt + config.py | Token estimate: ~450 | NEW: pytest -->
 
 # 外部依赖与集成
 
 ## Python 包依赖（requirements.txt）
 
-**核心包**:
+### 核心生产依赖
+
 ```
 openai==2.21.0       # LLM API 客户端（兼容 DeepSeek）
 requests==2.32.5     # HTTP 客户端（OCR API 调用）
 tqdm==4.67.3         # 进度条（批量处理）
-python-dotenv==1.2.1 # 环境变量管理
+python-dotenv==1.2.1 # 环境变量管理（.env 配置）
+pydantic==2.12.5     # 数据验证与序列化
+PyYAML==6.0.3        # YAML 配置解析
 ```
 
-**未来依赖**:
+### 测试依赖（NEW - 2026-02-23）
+
 ```
-qmd==0.1.0           # 向量数据库（Phase 2+）
-sqlite-vec==0.1.6    # SQLite 向量扩展（Phase 2+）
+pytest==9.0.2        # 测试框架
+pytest-cov==7.0.0    # 覆盖率报告
 ```
 
-**其他依赖**:
-- pydantic, PyYAML, typing-extensions（数据验证与配置）
-- httpx, httpcore（HTTP 基础库）
-- 标准库 logging（日志，已移除 loguru）
+### 未来依赖（Phase 2+）
+
+```
+qmd==0.1.0           # 向量数据库（案例语义检索）
+sqlite-vec==0.1.6    # SQLite 向量扩展
+langchain            # LangChain 工具链
+langchain-openai     # OpenAI 集成
+langgraph            # 多智能体编排
+```
+
+### 传递依赖（自动安装）
+
+- httpx, httpcore（OpenAI 的 HTTP 基础库）
+- typing-extensions（类型系统扩展）
+- 标准库 logging（日志，已移除 loguru 和 watchdog 僵尸依赖）
 
 **Conda 环境**: `sca` (Python 3.10)
 
 **最近变更**:
+- 新增 pytest + pytest-cov（2026-02-23）
 - 移除 loguru 和 watchdog 僵尸依赖（commit d92dcf0）
-- 添加 python-dotenv 用于 .env 配置（commit 49f1379）
+- 添加 python-dotenv 用于 .env 配置
 
 ---
 
@@ -187,16 +203,31 @@ langgraph
 **更新策略**:
 - openai: 跟踪官方更新（目前 2.21.0 支持 API 兼容模式）
 - requests: 保持稳定版本（2.32.5）
+- pytest: 定期更新，确保与 Python 3.10 兼容
 - 其他: 仅在必要时更新
 
-**测试流程**:
+**测试与验证流程**:
+
 ```bash
 # 1. 更新依赖版本
 pip install --upgrade <package>
 
-# 2. 运行单文件快速测试
+# 2. 运行单元测试验证（推荐）
+conda run -n sca pytest tests/ -v
+
+# 3. 或运行单文件快速测试
 conda run -n sca python main.py --input data/7.pdf --output test_tmp
 
-# 3. 清理
+# 4. 清理
 rm -rf test_tmp
+```
+
+**最小化测试**:
+```bash
+# 快速验证 RegexCleaning 和 MarkdownVerifier（无需 API 调用）
+conda run -n sca pytest tests/test_cleaning.py::TestRegexCleaningClean -v
+conda run -n sca pytest tests/test_verifier.py -v
+
+# 完整覆盖率报告
+conda run -n sca pytest tests/ --cov=. --cov-report=term-missing
 ```

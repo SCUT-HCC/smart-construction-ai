@@ -1,4 +1,4 @@
-<!-- Generated: 2026-02-23 | Files scanned: N/A (无数据库) | Token estimate: ~400 -->
+<!-- Generated: 2026-02-23 | Files scanned: N/A (无数据库，Phase 1) | Token estimate: ~500 | NEW: test fixtures -->
 
 # 数据结构与存储
 
@@ -131,6 +131,49 @@ collection: construction_plans
 
 **最近清理**: 移除 loguru 和 watchdog 僵尸依赖（commit d92dcf0）
 
+## 测试数据与 Fixtures（NEW - 2026-02-23）
+
+### conftest.py 提供的 Fixtures
+
+```python
+# 实例 fixtures
+@pytest.fixture
+def regex_cleaner() -> RegexCleaning:
+    """使用项目配置的 RegexCleaning 实例"""
+
+@pytest.fixture
+def verifier() -> MarkdownVerifier:
+    """使用项目配置的 MarkdownVerifier 实例"""
+
+# 样本数据 fixtures
+@pytest.fixture
+def sample_markdown() -> str:
+    """典型施工方案 Markdown"""
+    return """## 编制依据\n本工程施工方案依据以下规范编制..."""
+
+@pytest.fixture
+def sample_html_table() -> str:
+    """OCR 残留的 HTML 表格"""
+    return "<table><tr><th>序号</th>...</tr></table>"
+
+@pytest.fixture
+def sample_latex_text() -> str:
+    """包含 LaTeX 符号的文本"""
+    return "钢筋间距 $\\geq$ 100mm，温度 $45^{\\circ}$..."
+```
+
+### 测试覆盖的样本数据
+
+| Fixture | 用途 | 测试场景 |
+|---------|------|---------|
+| `regex_cleaner` | RegexCleaning 实例 | 水印移除、符号转换、空行压缩 |
+| `verifier` | MarkdownVerifier 实例 | 长度检查、幻觉检测、结构验证 |
+| `sample_markdown` | 标准施工方案文本 | 完整文档处理流程 |
+| `sample_html_table` | OCR 残留 HTML | HTML 转 Markdown 处理 |
+| `sample_latex_text` | LaTeX 科学计数法 | 符号转换（≥, °, →等） |
+
+---
+
 ## 数据安全
 
 | 风险 | 说明 | 缓解措施 |
@@ -138,3 +181,4 @@ collection: construction_plans
 | API Key 泄露 | config.py 中读取 .env | 使用 python-dotenv + 环境变量 |
 | 敏感信息 | PDF 中可能包含项目敏感数据 | 未脱敏（MVP 阶段不考虑） |
 | 备份策略 | 无 | MVP 阶段不考虑 |
+| 测试数据 | 样本数据基于真实文档 | 测试数据与生产隔离（tests/ 目录） |

@@ -1,16 +1,17 @@
-<!-- Generated: 2026-02-23 | Total files in CODEMAPS: 5 | Architecture coverage: 100% -->
+<!-- Generated: 2026-02-23 | Files scanned: 13 Python modules | Test coverage: NEW | Token estimate: ~2000 -->
 
 # 代码地图索引 - 南网施工方案智能辅助系统
 
 ## 项目概览
 
-**南网施工方案智能辅助系统** (smart-construction-ai) 是一个 MVP 级别的 Python 应用，实现 PDF 到 Markdown 的完整清洗管道。
+**南网施工方案智能辅助系统** (smart-construction-ai) 是一个 MVP 级别的 Python 应用，实现 PDF 到 Markdown 的完整清洗管道，现已配置测试框架。
 
 - **技术栈**: Python 3.10 + LangChain + LangGraph（多智能体系统）
-- **核心功能**: OCR 识别 → 正则清洗 → LLM 语义清洗 → 质量验证
+- **核心功能**: OCR 识别 → 正则清洗 → LLM 语义清洗 → 质量验证 → 单元测试
 - **项目周期**: 2026-01 至 2026-12（中期检查 2026-06-30）
 - **Conda 环境**: `sca`
 - **开发规范**: CLAUDE.md + coding-style-guide.md
+- **测试框架**: pytest + pytest-cov（新增，2026-02-23）
 
 ---
 
@@ -121,23 +122,30 @@
 smart-construction-ai/
 ├── docs/CODEMAPS/
 │   ├── INDEX.md (本文件) - 导航与索引
-│   ├── architecture.md - 系统架构 (~650 tokens)
-│   ├── backend.md - 后端流程 (~500 tokens)
-│   ├── data.md - 数据结构 (~400 tokens)
-│   └── dependencies.md - 外部依赖 (~350 tokens)
+│   ├── architecture.md - 系统架构 (~700 tokens)
+│   ├── backend.md - 后端流程 (~600 tokens)
+│   ├── data.md - 数据结构 (~450 tokens)
+│   └── dependencies.md - 外部依赖 (~400 tokens)
 ├── docs/architecture/ (系统设计文档 09份)
 ├── docs/analysis/ (16份文档的章节分析)
-├── main.py - 入口与参数解析
-├── processor.py - PDF 处理协调器
-├── crawler.py - OCR 客户端
-├── cleaning.py - 清洗引擎 (正则 + LLM)
-├── verifier.py - 质量验证
-├── config.py - 全局配置
-├── utils/logger_system.py - 日志系统
+├── main.py - 入口与参数解析 (50 行)
+├── processor.py - PDF 处理协调器 (91 行)
+├── crawler.py - OCR 客户端 (69 行)
+├── cleaning.py - 清洗引擎 (正则 + LLM) (434 行)
+├── verifier.py - 质量验证 (67 行)
+├── config.py - 全局配置 (45 行)
+├── utils/
+│   ├── __init__.py
+│   └── logger_system.py - 日志系统 (48 行)
+├── tests/ (NEW)
+│   ├── __init__.py
+│   ├── conftest.py - pytest fixtures (66 行)
+│   ├── test_cleaning.py - RegexCleaning + LLMCleaning 单元测试 (369 行)
+│   └── test_verifier.py - MarkdownVerifier 单元测试 (145 行)
 ├── templates/ - GB/T 50502 标准模板
 ├── data/ - 16份原始 PDF
 ├── output/ - 清洗后的 Markdown (16份)
-├── requirements.txt - Python 依赖
+├── requirements.txt - Python 依赖 (28 行，新增 pytest）
 └── .env / .env.example - 环境变量
 ```
 
@@ -145,15 +153,25 @@ smart-construction-ai/
 
 ## 核心组件职责一览
 
+### 生产代码（Production）
+
 | 组件 | 行数 | 职责 | 主要方法 |
 |------|------|------|---------|
 | **main.py** | 50 | 入口与参数解析 | `parse_args()`, `main()` |
-| **processor.py** | 90 | 处理流程协调 | `process_file()`, `process_directory()` |
+| **processor.py** | 91 | 处理流程协调 | `process_file()`, `process_directory()` |
 | **crawler.py** | 69 | OCR API 调用 | `MonkeyOCRClient.to_markdown()` |
 | **cleaning.py** | 434 | 正则 + LLM 清洗 | `RegexCleaning.clean()`, `LLMCleaning.clean()` |
-| **verifier.py** | 60 | 质量验证 | `MarkdownVerifier.verify()` |
+| **verifier.py** | 67 | 质量验证 | `MarkdownVerifier.verify()` |
 | **config.py** | 45 | 全局配置 | `LLM_CONFIG`, `CLEANING_CONFIG` 等 |
 | **logger_system.py** | 48 | 日志与追踪 | `log_msg()`, `log_json()` |
+
+### 测试代码（Tests）- NEW
+
+| 组件 | 行数 | 职责 | 覆盖 |
+|------|------|------|------|
+| **conftest.py** | 66 | 共享 pytest fixtures | RegexCleaning, MarkdownVerifier, 样本数据 |
+| **test_cleaning.py** | 369 | RegexCleaning + LLMCleaning | 10+ 单元测试（水印移除、符号转换等） |
+| **test_verifier.py** | 145 | MarkdownVerifier | 5+ 单元测试（长度检查、幻觉检测等） |
 
 ---
 
@@ -161,11 +179,11 @@ smart-construction-ai/
 
 | 日期 | Commit | 变更 |
 |------|--------|------|
-| 2026-02-23 | (当前) | 生成完整代码地图（architecture, backend, data, dependencies）|
+| 2026-02-23 | (当前) | 新增 tests/ 目录（pytest 框架）+ 更新所有代码地图文档 |
 | 2026-02-23 | d92dcf0 | 移除 loguru/watchdog 僵尸依赖，统一日志方案 |
+| 2026-02-23 | 66e8fc9 | 更新代码地图 — 新增导航索引、对齐最新代码变更 |
 | 2026-02-15 | 63a0940 | 清理 .gitignore 中已无用的忽略条目 |
 | 2026-02-13 | 19b4b24 | 清理孤立实验目录，归档参考文档 |
-| 2026-02-10 | acdfa73 | 添加项目鸟瞰文档 - 规划与代码一致性比对报告 |
 
 ---
 
@@ -196,11 +214,12 @@ smart-construction-ai/
 ## 代码地图生成信息
 
 - **生成时间**: 2026-02-23
-- **扫描文件**: 9 个 Python 核心模块 + 配置 + 日志
-- **总代码行数**: ~796 行（不含 __pycache__ 和 .git）
-- **代码地图总行数**: ~1800 行（4份文档）
+- **扫描文件**: 13 个 Python 模块（核心 7 个 + 测试 3 个 + 配置 + 日志 + utils）
+- **总代码行数**: ~1335 行（755 生产代码 + 580 测试代码）
+- **代码地图总行数**: ~2150 行（5份文档）
 - **预期阅读时间**: 30-45 分钟（完整阅读）; 5-10 分钟（快速查询）
 - **最后更新**: 2026-02-23（与代码同步）
+- **重大变更**: 新增 tests/ 目录，添加 pytest 测试框架
 
 ---
 

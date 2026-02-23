@@ -1,6 +1,6 @@
-<!-- Generated: 2026-02-23 | Files scanned: 6 core modules | Token estimate: ~500 -->
+<!-- Generated: 2026-02-23 | Files scanned: 13 modules (7 production + 3 tests + utils + config) | Token estimate: ~650 | NEW: pytest framework -->
 
-# 后端处理流程
+# 后端处理流程 - 生产代码与测试框架
 
 ## 核心链路
 
@@ -138,3 +138,108 @@ output/
 | LLM API 超时 | 抛出异常 | 文件标记失败 → WARNING |
 | 验证失败 | 记录 WARNING | 不阻断流程（已生成 final.md） |
 | 目录不存在 | 抛出异常 | 任务停止 → ERROR |
+
+---
+
+## 测试框架（NEW - 2026-02-23）
+
+### 测试结构
+
+```
+tests/
+├── conftest.py (66 行) - pytest fixtures 配置
+├── test_cleaning.py (369 行) - RegexCleaning + LLMCleaning 单元测试
+└── test_verifier.py (145 行) - MarkdownVerifier 单元测试
+```
+
+### pytest 配置
+
+**Fixtures** (conftest.py):
+```python
+@pytest.fixture
+def regex_cleaner() -> RegexCleaning:
+    """使用项目配置的 RegexCleaning 实例"""
+    return RegexCleaning(config.CLEANING_CONFIG["regex_patterns"])
+
+@pytest.fixture
+def verifier() -> MarkdownVerifier:
+    """使用项目配置的 MarkdownVerifier 实例"""
+    return MarkdownVerifier(
+        min_length_ratio=config.VERIFY_CONFIG["min_length_ratio"],
+        forbidden_phrases=config.VERIFY_CONFIG["forbidden_phrases"]
+    )
+
+@pytest.fixture
+def sample_markdown() -> str:
+    """典型施工方案 Markdown 片段"""
+    # 包含标题、表格、列表的样本数据
+
+@pytest.fixture
+def sample_latex_text() -> str:
+    """包含 LaTeX 符号的文本片段"""
+```
+
+### RegexCleaning 单元测试 (test_cleaning.py)
+
+覆盖场景:
+```
+✓ test_removes_watermark - CHINA SOUTHERN POWER GRID 水印移除
+✓ test_converts_textcircled_at_line_start - 行首 \textcircled{N} → "N. "
+✓ test_converts_textcircled_inline - 行中 \textcircled{N} → "(N)"
+✓ test_collapses_blank_lines - 多余空行压缩
+✓ test_removes_standalone_page_numbers - 独占一行的页码移除
+✓ test_preserves_normal_content - 正常文本保护
+... (6+ 个测试，覆盖正则清洗的主要场景)
+```
+
+### LLMCleaning 单元测试 (test_cleaning.py)
+
+使用 `@patch` mock OpenAI 客户端，避免真实 API 调用:
+```python
+with patch('openai.OpenAI') as mock_openai:
+    mock_response = MagicMock()
+    mock_response.choices[0].message.content = "cleaned content"
+
+    llm_cleaner = LLMCleaning(api_key, base_url, model, temperature=0.1)
+    result = llm_cleaner.clean(text)
+    # 验证 OpenAI 调用及返回结果
+```
+
+### MarkdownVerifier 单元测试 (test_verifier.py)
+
+覆盖场景:
+```
+✓ test_verify_all_checks_pass - 所有验证通过
+✓ test_verify_length_check_fails - 字数保留率不足
+✓ test_check_hallucination_preamble - 检测对话性前缀
+✓ test_check_hallucination_forbidden_phrase - 检测禁用短语
+✓ test_check_structure_valid_table - 有效 Markdown 表格
+... (5+ 个测试，覆盖验证逻辑)
+```
+
+### 运行测试
+
+```bash
+# 激活 Conda 环境
+conda activate sca
+
+# 运行所有测试
+conda run -n sca pytest tests/ -v
+
+# 运行特定测试文件
+conda run -n sca pytest tests/test_cleaning.py -v
+
+# 运行带覆盖率报告
+conda run -n sca pytest tests/ --cov=. --cov-report=term-missing
+
+# 运行特定测试类
+conda run -n sca pytest tests/test_cleaning.py::TestRegexCleaningClean -v
+```
+
+### 依赖
+
+| 包 | 版本 | 用途 |
+|------|------|------|
+| pytest | 9.0.2 | 测试框架 |
+| pytest-cov | 7.0.0 | 覆盖率报告 |
+| unittest.mock | 标准库 | Mock OpenAI 客户端 |

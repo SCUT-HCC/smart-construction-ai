@@ -1,10 +1,10 @@
-<!-- Generated: 2026-02-23 | Files scanned: 9 | Token estimate: ~650 -->
+<!-- Generated: 2026-02-23 | Files scanned: 13 | Token estimate: ~700 | NEW: pytest framework -->
 
 # 系统架构 - 南网施工方案智能辅助系统
 
 ## 项目类型
 
-单体应用（MVP）- PDF 处理与清洗管道
+单体应用（MVP）- PDF 处理与清洗管道 + 单元测试框架
 
 ## 核心数据流
 
@@ -16,6 +16,8 @@ data/      raw.md     regex.md     final.md       日志系统    output/N/
 
 ## 模块边界
 
+### 生产代码流（Production）
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                      入口层 (Entry)                          │
@@ -26,7 +28,7 @@ data/      raw.md     regex.md     final.md       日志系统    output/N/
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    核心处理层 (Core)                         │
-│  processor.py (90 行)                                        │
+│  processor.py (91 行)                                        │
 │  ├─ PDFProcessor.process_file()                             │
 │  └─ PDFProcessor.process_directory()                        │
 └─────────────────────────────────────────────────────────────┘
@@ -36,7 +38,7 @@ data/      raw.md     regex.md     final.md       日志系统    output/N/
 ┌──────────────────┐ ┌──────────────┐ ┌──────────────┐
 │   OCR 识别       │ │   清洗引擎   │ │   质量验证   │
 │  crawler.py      │ │ cleaning.py  │ │ verifier.py  │
-│   (69 行)        │ │  (434 行)    │ │  (60 行)     │
+│   (69 行)        │ │  (434 行)    │ │  (67 行)     │
 └──────────────────┘ └──────────────┘ └──────────────┘
                               │
                               ▼
@@ -45,6 +47,28 @@ data/      raw.md     regex.md     final.md       日志系统    output/N/
 │  config.py (45 行) - 全局配置                                │
 │  utils/logger_system.py (48 行) - 日志系统（标准库 logging）│
 └─────────────────────────────────────────────────────────────┘
+```
+
+### 测试框架（NEW - 2026-02-23）
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    pytest 测试框架 (Tests)                   │
+├─────────────────────────────────────────────────────────────┤
+│  conftest.py (66 行) - 共享 fixtures                        │
+│  ├─ regex_cleaner fixture                                   │
+│  ├─ verifier fixture                                        │
+│  └─ sample_markdown, sample_latex_text fixtures             │
+│                                                              │
+│  test_cleaning.py (369 行) - RegexCleaning 单元测试          │
+│  ├─ TestRegexCleaningClean (10+ 个测试)                     │
+│  └─ TestLLMCleaningClean (mocked OpenAI)                    │
+│                                                              │
+│  test_verifier.py (145 行) - MarkdownVerifier 单元测试       │
+│  └─ TestMarkdownVerifier (5+ 个测试)                        │
+└─────────────────────────────────────────────────────────────┘
+         │
+         └─ 验证生产代码的正确性、边界情况、错误处理
 ```
 
 ## 外部依赖
