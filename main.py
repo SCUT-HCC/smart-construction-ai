@@ -21,7 +21,14 @@ def parse_args():
 
 def main():
     args = parse_args()
-    
+
+    if not args.api_key:
+        log_msg("ERROR", "未设置 SCA_LLM_API_KEY 环境变量。"
+                "请执行: export SCA_LLM_API_KEY='your-api-key' 或在 .env 文件中配置")
+    if not args.base_url:
+        log_msg("ERROR", "未设置 SCA_LLM_BASE_URL 环境变量。"
+                "请执行: export SCA_LLM_BASE_URL='http://your-llm-server/v1' 或在 .env 文件中配置")
+
     ocr_client = MonkeyOCRClient(args.ocr_url, timeout=config.MONKEY_OCR_CONFIG["timeout"])
     regex_cleaner = RegexCleaning(config.CLEANING_CONFIG["regex_patterns"])
     llm_cleaner = LLMCleaning(args.api_key, args.base_url, args.model, config.LLM_CONFIG["temperature"])

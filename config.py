@@ -1,7 +1,12 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 LLM_CONFIG = {
-    "api_key": "sk-UiUarItJQtYeyT8D0f0c59D674C14439B4082677766f3bA3",
-    "base_url": "http://110.42.53.85:11081/v1",
-    "model": "deepseek-chat",
+    "api_key": os.environ.get("SCA_LLM_API_KEY", ""),
+    "base_url": os.environ.get("SCA_LLM_BASE_URL", ""),
+    "model": os.environ.get("SCA_LLM_MODEL", "deepseek-chat"),
     "temperature": 0.1,
     "max_tokens": 4096,
     "chunk_size": 2000,

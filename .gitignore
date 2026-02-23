@@ -9,6 +9,9 @@ task_log.json
 .idea/
 .vscode/
 *.log
+.env
+.env.*
+!.env.example
 test_run/
 test_output/
 templates/awesome-claude-skills/
