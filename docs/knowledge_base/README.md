@@ -11,10 +11,17 @@
 docs/knowledge_base/
 ├── README.md                          ← 本文件（索引与导航）
 │
-├── writing_guides/                    # 撰写指南（3 章）
+├── writing_guides/                    # 撰写指南（10 章全覆盖）
 │   ├── ch01_编制依据.md              # Agent 角色 + 推理链 + 输出模板
 │   ├── ch02_工程概况.md              # Agent 角色 + 推理链 + 输出模板
-│   └── ch04_施工安排.md              # Agent 角色 + 推理链 + 输出模板
+│   ├── ch03_施工组织机构.md          # Agent 角色 + 推理链 + 输出模板
+│   ├── ch04_施工安排.md              # Agent 角色 + 推理链 + 输出模板
+│   ├── ch05_施工准备.md              # Agent 角色 + 推理链 + 输出模板
+│   ├── ch06_施工方法.md              # Agent 角色 + 推理链 + 检索路由框架
+│   ├── ch07_质量管理.md              # Agent 角色 + 推理链 + 输出模板
+│   ├── ch08_安全管理.md              # Agent 角色 + 推理链 + 输出模板
+│   ├── ch09_应急预案.md              # Agent 角色 + 推理链 + 输出模板
+│   └── ch10_绿色施工.md              # Agent 角色 + 推理链 + 输出模板（可选章节）
 │
 ├── compliance_standards/              # 合规标准库
 │   └── reference_standards.md         # 9 大类 80+ 条国标/行标/企标
@@ -25,11 +32,24 @@ docs/knowledge_base/
 ├── targets/                           # 目标量化指标
 │   └── quantified_targets.md          # 质量 / 安全 / 绿色施工 / 文明施工
 │
-└── process_references/                # 工程工艺参考（4 类）
-    ├── civil_works.md                 # 变电土建（混凝土、钢筋、模板、强夯、防水）
-    ├── electrical_install.md          # 变电电气（主变安装、建筑电气、防雷接地）
-    ├── line_tower.md                  # 线路塔基（挖孔桩、灌注桩、钢结构屋面）
-    └── special_general.md             # 特殊/通用（雨季、有限空间、防腐防火、起重吊装）
+├── process_references/                # 工程工艺参考（4 类）
+│   ├── civil_works.md                 # 变电土建（混凝土、钢筋、模板、强夯、防水）
+│   ├── electrical_install.md          # 变电电气（主变安装、建筑电气、防雷接地）
+│   ├── line_tower.md                  # 线路塔基（挖孔桩、灌注桩、钢结构屋面）
+│   └── special_general.md             # 特殊/通用（雨季、有限空间、防腐防火、起重吊装）
+│
+├── organization/                      # 组织架构与岗位职责
+│   └── role_templates.md              # 标准组织架构 + 10 个关键岗位职责模板
+│
+├── quality/                           # 质量管理参考
+│   └── quality_control_points.md      # 质量控制点 + 通病防治 + 成品保护
+│
+├── safety_knowledge/                  # 安全管理参考
+│   ├── hazard_sources.md              # 危险源辨识与风险评估（按工程类型分类）
+│   └── safety_measures.md             # 安全保证措施 + 文明施工 + 环保措施
+│
+└── emergency/                         # 应急管理参考
+    └── emergency_procedures.md        # 8 类事故处置程序 + 物资清单 + 演练要求
 ```
 
 ---
@@ -40,10 +60,36 @@ docs/knowledge_base/
 |------|---------|------|
 | 生成 Ch1 编制依据 | `writing_guides/ch01_编制依据.md` → `compliance_standards/reference_standards.md` | 先读指南确定推理链，再从标准库检索匹配标准 |
 | 生成 Ch2 工程概况 | `writing_guides/ch02_工程概况.md` → `engineering_data/data_requirements.md` | 先读指南确定数据结构，再按工程类型填充参数表 |
+| 生成 Ch3 施工组织 | `writing_guides/ch03_施工组织机构.md` → `organization/role_templates.md` | 按工程规模选择架构模板，检索岗位职责 |
 | 生成 Ch4 施工安排 | `writing_guides/ch04_施工安排.md` → `targets/quantified_targets.md` + `process_references/*.md` | 先读指南确定框架，从目标库取指标，从工艺库取流程 |
+| 生成 Ch5 施工准备 | `writing_guides/ch05_施工准备.md` → `process_references/*.md` | 从 Ch6 反推设备/材料需求，按工程类型检索清单 |
+| 生成 Ch6 施工方法 | `writing_guides/ch06_施工方法.md` → `process_references/*.md` | 按工程类型路由到对应工艺参考库 |
+| 生成 Ch7 质量管理 | `writing_guides/ch07_质量管理.md` → `quality/quality_control_points.md` + `targets/quantified_targets.md` | 从 Ch6 反推质量控制点，加载量化目标 |
+| 生成 Ch8 安全管理 | `writing_guides/ch08_安全管理.md` → `safety_knowledge/hazard_sources.md` + `safety_knowledge/safety_measures.md` | 从 Ch6 反推危险源，匹配安全措施 |
+| 生成 Ch9 应急预案 | `writing_guides/ch09_应急预案.md` → `emergency/emergency_procedures.md` | 从 Ch8 反推事故类型，检索处置程序 |
+| 生成 Ch10 绿色施工 | `writing_guides/ch10_绿色施工.md` → `targets/quantified_targets.md` | 判断是否需要本章，加载"四节一环保"框架 |
 | 审核依据时效性 | `compliance_standards/reference_standards.md` | 比对方案引用的标准与最新标准库 |
 | 审核章节完整性 | `engineering_data/data_requirements.md` | 检查工程概况章节数据字段是否完整 |
 | 审核质量/安全指标 | `targets/quantified_targets.md` | 比对方案中的目标值是否达到最低标准 |
+
+---
+
+## 章节间依赖关系
+
+```
+Ch2（工程概况）──→ Ch3（组织架构：基于工程规模定人员配置）
+               ──→ Ch4（施工安排：基于工程量排工期）
+               ──→ Ch5（施工准备：基于工程量定设备/材料）
+               ──→ Ch6（施工方法：基于工程类型选工艺）
+
+Ch6（施工方法）──→ Ch5（设备/材料与工法一致）
+               ──→ Ch7（质量控制点对应施工工序）
+               ──→ Ch8（危险源对应施工工序）
+
+Ch8（安全管理）──→ Ch9（应急类型对应风险类型）
+```
+
+> **生成顺序**：Ch1 → Ch2 → Ch3 → Ch4 → Ch5 ↔ Ch6 → Ch7 → Ch8 → Ch9 → Ch10（可选）
 
 ---
 
