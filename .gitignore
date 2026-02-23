@@ -14,4 +14,5 @@ task_log.json
 !.env.example
 test_run/
 test_output/
+workflow/
 templates/awesome-claude-skills/
