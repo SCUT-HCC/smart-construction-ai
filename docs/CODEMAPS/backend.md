@@ -1,19 +1,22 @@
-<!-- Generated: 2026-02-23 | Files scanned: 13 modules (7 production + 3 tests + utils + config) | Token estimate: ~650 | NEW: pytest framework -->
+<!-- Generated: 2026-02-24 | Files scanned: 20 modules | Token estimate: ~900 -->
 
-# 后端处理流程 - 生产代码与测试框架
+# 后端处理流程 - PDF 清洗 + 知识提取
 
-## 核心链路
+## 管道总览
 
 ```
-main.py → PDFProcessor → [OCR → Regex → LLM] → Verifier → 文件输出
+管道 1 (Phase 1): main.py → PDFProcessor → [OCR → Regex → LLM] → Verifier → output/N/final.md
+管道 2 (Phase 2): __main__.py → Pipeline.run() → [Split → Annotate → Evaluate → Refine → Dedup] → fragments.jsonl
 ```
 
-## 关键类与方法
+---
+
+## 管道 1: PDF 清洗
 
 ### 1. 入口调度（main.py:50）
 
 ```python
-parse_args() → 解析命令行参数
+parse_args() → 解析 --input, --output
 main() → 初始化组件链 → 触发处理
 ```
 
@@ -31,215 +34,168 @@ processor = PDFProcessor(**components)
 ### 2. 处理器（processor.py:90）
 
 ```python
-PDFProcessor.__init__(ocr_client, regex_cleaner, llm_cleaner, verifier)
-├─ process_file(pdf_path, output_dir)
-│  └─ OCR → 保存 raw.md → 正则 → 保存 regex.md → LLM → 保存 final.md → 验证
-└─ process_directory(input_dir, output_dir)
-   └─ 批量调用 process_file()（tqdm 进度条）
+PDFProcessor.process_file(pdf_path, output_dir)
+├─ OCR → 保存 raw.md → 正则 → 保存 regex.md → LLM → 保存 final.md → 验证
+PDFProcessor.process_directory(input_dir, output_dir)
+└─ 批量调用 process_file()（tqdm 进度条）
 ```
 
 ### 3. OCR 客户端（crawler.py:69）
 
 ```python
 MonkeyOCRClient.to_markdown(pdf_path: str) -> str
-├─ POST /parse (multipart/form-data)
-├─ 获取 download_url
-├─ GET /download_url (下载 ZIP)
-└─ 解析 ZIP 获取 .md 文件
+├─ POST /parse (multipart/form-data) → download_url
+└─ GET /download_url → ZIP → 解析 .md
 ```
-
-**错误处理**:
-- 网络异常 → 返回空字符串
-- ZIP 解析失败 → 返回空字符串
-- 所有异常都记录 ERROR（自动抛异常）
 
 ### 4. 清洗引擎（cleaning.py:434）
 
-#### 4.1 正则清洗
 ```python
 RegexCleaning.clean(content: str) -> str
-├─ 应用 6 条正则模式：
-│  1. LaTeX 圆圈数字 → 标准序号
-│  2. LaTeX 圆圈数字（内联） → 括号序号
-│  3. 行末多余空格
-│  4. 企业名称（CHINA SOUTHERN POWER GRID）
-│  5. 批复符号（批/★）
-│  6. 孤立页码
+├─ 6 条正则: LaTeX 序号、行末空格、企业名、批复符、孤立页码
 └─ 压缩多余空行（3+ → 2）
-```
 
-#### 4.2 LLM 清洗
-```python
 LLMCleaning.clean(content: str) -> str
 ├─ split_into_paragraphs() → 按段落分块（chunk_size=2000）
-├─ process_chunk(chunk: str) -> str
-│  ├─ OpenAI API 调用
-│  ├─ system: SYSTEM_PROMPT (434 行中定义)
-│  ├─ temperature: 0.1
-│  └─ max_tokens: 4096
-└─ 合并清洗结果
-
-SYSTEM_PROMPT 定义（434 行）:
-- 禁止对话性前缀（好的、以下是等）
-- 允许的操作（标题合并、嵌套列表、段落连贯等）
-- LaTeX 符号 → Unicode 映射（100+ 符号）
+├─ process_chunk() → DeepSeek API（temperature=0.1, max_tokens=4096）
+└─ SYSTEM_PROMPT: 禁对话前缀、标题合并、段落连贯、LaTeX→Unicode
 ```
 
-### 5. 质量验证（verifier.py:60）
+### 5. 质量验证（verifier.py:67）
 
 ```python
-MarkdownVerifier.verify(original: str, cleaned: str) -> Dict[str, bool]
+MarkdownVerifier.verify(original, cleaned) -> Dict[str, bool]
 ├─ check_length() → 字数保留率 ≥ 50%
-├─ check_hallucination() → 检测 LLM 对话性前缀（正则行首匹配）
+├─ check_hallucination() → 检测 LLM 对话性前缀
 └─ check_structure() → 表格管道符数量检测
 ```
 
-## 配置中心（config.py:45）
+---
 
-| 配置块 | 关键参数 | 说明 |
-|--------|---------|------|
-| `LLM_CONFIG` | api_key, base_url, model | 从 .env 读取，温度=0.1，最大4096 tokens，分块=2000 |
-| `MONKEY_OCR_CONFIG` | base_url, timeout | localhost:7861，超时 120s |
-| `PATHS` | input_dir, output_dir, log_dir | 输入输出路径 |
-| `CLEANING_CONFIG` | remove_watermark, company_name, regex_patterns | 6 条正则模式列表 |
-| `VERIFY_CONFIG` | min_length_ratio, forbidden_phrases | 保留率 ≥50%，禁止短语清单 |
+## 管道 2: 知识提取
+
+### 入口（knowledge_extraction/__main__.py:5）
+
+```bash
+python -u -m knowledge_extraction
+```
+
+### 6 步管道编排（pipeline.py:308）
+
+```python
+Pipeline.run() → 6 步顺序执行:
+│
+├─ Step 1: ChapterSplitter.split(doc_path) → List[Section]
+│  └─ 正则匹配 Markdown 标题 → 映射到标准 10 章节
+│
+├─ Step 2: MetadataAnnotator.annotate(sections) → List[Section]
+│  └─ 添加 source_doc, chapter, engineering_type, tags
+│
+├─ Step 3: DensityEvaluator.evaluate(sections) → List[Section]
+│  └─ 并行 LLM 调用（max_workers=4），评估 high/medium/low
+│
+├─ Step 4: ContentRefiner.refine(sections) → List[Section]
+│  └─ 仅精炼 medium 密度片段，LLM 摘要简化
+│
+├─ Step 5: Deduplicator.deduplicate(sections) → List[Section]
+│  └─ 按章节分组 → Jaccard 相似度 > 0.8 → 保留最高质量
+│
+└─ Step 6: 过滤 + 序列化 → output/fragments.jsonl
+   └─ 仅保留 high + medium 密度片段（692 条）
+```
+
+### 章节分割器（chapter_splitter.py:253）
+
+```python
+ChapterSplitter.split(doc_path: str) -> List[Section]
+├─ _extract_sections() → 正则解析 Markdown 标题层级
+├─ _map_chapter(title) → 匹配标准 10 章节（精确 + 变体关键词）
+└─ _is_admin_content(title) → 过滤行政性内容（审批页、签章等）
+```
+
+**标准章节映射** (knowledge_extraction/config.py):
+```
+Ch1 编制依据 ← "编制依据", "编制说明", "依据"
+Ch2 工程概况 ← "工程概况", "项目概况", "工程简介"
+... (10 章节，每章 2-5 个变体关键词)
+```
+
+### 密度评估器（density_evaluator.py:205）
+
+```python
+DensityEvaluator.evaluate(sections) -> List[Section]
+├─ ThreadPoolExecutor(max_workers=4) → 并行 LLM 调用
+├─ 每片段独立评估 → 返回 {"density": "high|medium|low", "reason": "..."}
+└─ 评估标准: 技术具体性、数据丰富度、可复用性
+```
+
+### 去重器（deduplicator.py:163）
+
+```python
+Deduplicator.deduplicate(sections) -> List[Section]
+├─ 按 chapter 分组
+├─ _dedup_group() → 两两 Jaccard 比较
+│  └─ 相似度 > 0.8 → 保留 quality_score 更高的
+└─ 合并所有分组结果
+```
+
+---
+
+## 配置中心
+
+### 全局配置（config.py:45）
+
+| 配置块 | 关键参数 |
+|--------|---------|
+| `LLM_CONFIG` | api_key, base_url, model, temperature=0.1, max_tokens=4096, chunk_size=2000 |
+| `MONKEY_OCR_CONFIG` | base_url=localhost:7861, timeout=120s |
+| `CLEANING_CONFIG` | 6 条正则模式 |
+| `VERIFY_CONFIG` | min_length_ratio=0.5, forbidden_phrases |
+
+### 知识提取配置（knowledge_extraction/config.py:176）
+
+| 配置块 | 关键参数 |
+|--------|---------|
+| `DOCS_TO_PROCESS` | [1..16] 文档列表 |
+| `DOC_QUALITY` | 每文档质量评分 1-3 |
+| `STANDARD_CHAPTERS` | Ch1-Ch10 标准章节定义 |
+| `CHAPTER_MAPPING` | 精确 + 变体关键词映射 |
+| `LLM_MAX_WORKERS` | 并发 API 调用数（默认 4） |
+| `DEDUP_THRESHOLD` | Jaccard 阈值 0.8 |
+
+---
 
 ## 日志系统（utils/logger_system.py:48）
 
 ```python
-log_msg(level: str, msg: str)
-  # INFO/WARNING/ERROR
-  # ERROR 级别自动抛异常
-
-log_json(data: dict, filename: str = "task_log.json")
-  # 追加到 task_log.json
-  # 自动添加 timestamp
-```
-
-**依赖**: 标准库 `logging`（已移除 loguru/watchdog 僵尸依赖）
-
-## 文件输出结构
-
-```
-output/
-├─ 1/
-│  ├─ raw.md      # OCR 原始输出
-│  ├─ regex.md    # 正则清洗后
-│  └─ final.md    # LLM 清洗后（最终产物）
-├─ 2/
-└─ ...16/
+log_msg(level: str, msg: str)   # INFO/WARNING/ERROR，ERROR 自动抛异常
+log_json(data: dict, filename)  # 追加到 task_log.json，自动加 timestamp
 ```
 
 ## 错误处理策略
 
 | 场景 | 处理 | 结果 |
 |------|------|------|
-| OCR 失败（网络/格式） | 返回空字符串 | 跳过该文件 → WARNING |
+| OCR 失败 | 返回空字符串 | 跳过该文件 → WARNING |
 | LLM API 超时 | 抛出异常 | 文件标记失败 → WARNING |
-| 验证失败 | 记录 WARNING | 不阻断流程（已生成 final.md） |
-| 目录不存在 | 抛出异常 | 任务停止 → ERROR |
+| 验证失败 | 记录 WARNING | 不阻断（已生成 final.md） |
+| 密度评估异常 | 标记为 low | 该片段被过滤 |
+| 章节映射失败 | 归入 "未分类" | 保留但不参与去重分组 |
 
 ---
 
-## 测试框架（NEW - 2026-02-23）
-
-### 测试结构
+## 测试框架
 
 ```
 tests/
-├── conftest.py (66 行) - pytest fixtures 配置
-├── test_cleaning.py (369 行) - RegexCleaning + LLMCleaning 单元测试
-└── test_verifier.py (145 行) - MarkdownVerifier 单元测试
+├── conftest.py (66 行) - 共享 fixtures
+├── test_cleaning.py (369 行) - RegexCleaning + LLMCleaning
+├── test_verifier.py (145 行) - MarkdownVerifier
+└── test_knowledge_extraction.py (368 行) - 知识提取管道各模块
 ```
 
-### pytest 配置
-
-**Fixtures** (conftest.py):
-```python
-@pytest.fixture
-def regex_cleaner() -> RegexCleaning:
-    """使用项目配置的 RegexCleaning 实例"""
-    return RegexCleaning(config.CLEANING_CONFIG["regex_patterns"])
-
-@pytest.fixture
-def verifier() -> MarkdownVerifier:
-    """使用项目配置的 MarkdownVerifier 实例"""
-    return MarkdownVerifier(
-        min_length_ratio=config.VERIFY_CONFIG["min_length_ratio"],
-        forbidden_phrases=config.VERIFY_CONFIG["forbidden_phrases"]
-    )
-
-@pytest.fixture
-def sample_markdown() -> str:
-    """典型施工方案 Markdown 片段"""
-    # 包含标题、表格、列表的样本数据
-
-@pytest.fixture
-def sample_latex_text() -> str:
-    """包含 LaTeX 符号的文本片段"""
-```
-
-### RegexCleaning 单元测试 (test_cleaning.py)
-
-覆盖场景:
-```
-✓ test_removes_watermark - CHINA SOUTHERN POWER GRID 水印移除
-✓ test_converts_textcircled_at_line_start - 行首 \textcircled{N} → "N. "
-✓ test_converts_textcircled_inline - 行中 \textcircled{N} → "(N)"
-✓ test_collapses_blank_lines - 多余空行压缩
-✓ test_removes_standalone_page_numbers - 独占一行的页码移除
-✓ test_preserves_normal_content - 正常文本保护
-... (6+ 个测试，覆盖正则清洗的主要场景)
-```
-
-### LLMCleaning 单元测试 (test_cleaning.py)
-
-使用 `@patch` mock OpenAI 客户端，避免真实 API 调用:
-```python
-with patch('openai.OpenAI') as mock_openai:
-    mock_response = MagicMock()
-    mock_response.choices[0].message.content = "cleaned content"
-
-    llm_cleaner = LLMCleaning(api_key, base_url, model, temperature=0.1)
-    result = llm_cleaner.clean(text)
-    # 验证 OpenAI 调用及返回结果
-```
-
-### MarkdownVerifier 单元测试 (test_verifier.py)
-
-覆盖场景:
-```
-✓ test_verify_all_checks_pass - 所有验证通过
-✓ test_verify_length_check_fails - 字数保留率不足
-✓ test_check_hallucination_preamble - 检测对话性前缀
-✓ test_check_hallucination_forbidden_phrase - 检测禁用短语
-✓ test_check_structure_valid_table - 有效 Markdown 表格
-... (5+ 个测试，覆盖验证逻辑)
-```
-
-### 运行测试
-
+运行命令:
 ```bash
-# 激活 Conda 环境
-conda activate sca
-
-# 运行所有测试
 conda run -n sca pytest tests/ -v
-
-# 运行特定测试文件
-conda run -n sca pytest tests/test_cleaning.py -v
-
-# 运行带覆盖率报告
 conda run -n sca pytest tests/ --cov=. --cov-report=term-missing
-
-# 运行特定测试类
-conda run -n sca pytest tests/test_cleaning.py::TestRegexCleaningClean -v
 ```
-
-### 依赖
-
-| 包 | 版本 | 用途 |
-|------|------|------|
-| pytest | 9.0.2 | 测试框架 |
-| pytest-cov | 7.0.0 | 覆盖率报告 |
-| unittest.mock | 标准库 | Mock OpenAI 客户端 |

@@ -1,12 +1,14 @@
-<!-- Generated: 2026-02-23 | Files scanned: 13 | Token estimate: ~700 | NEW: pytest framework -->
+<!-- Generated: 2026-02-24 | Files scanned: 20 | Token estimate: ~750 -->
 
 # 系统架构 - 南网施工方案智能辅助系统
 
 ## 项目类型
 
-单体应用（MVP）- PDF 处理与清洗管道 + 单元测试框架
+单体应用（MVP）- PDF 清洗管道 + 知识提取管道 + 单元测试框架
 
 ## 核心数据流
+
+### 数据流 1: PDF 清洗管道（Phase 1 - 已完成）
 
 ```
 PDF 输入 → OCR 识别 → 正则清洗 → LLM 语义清洗 → 质量验证 → Markdown 输出
@@ -14,61 +16,51 @@ PDF 输入 → OCR 识别 → 正则清洗 → LLM 语义清洗 → 质量验证
 data/      raw.md     regex.md     final.md       日志系统    output/N/
 ```
 
-## 模块边界
+### 数据流 2: 知识提取管道（Phase 2 - 已完成）
 
-### 生产代码流（Production）
+```
+final.md → 章节分割 → 元数据标注 → 密度评估 → 内容精炼 → 去重 → fragments.jsonl
+   ↓          ↓           ↓           ↓          ↓         ↓        ↓
+output/   Section[]   +metadata   high/med/low  refined   unique   692 条片段
+```
+
+## 模块边界
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                      入口层 (Entry)                          │
-│  main.py (50 行)                                             │
-│  └─ 参数解析 → 组件初始化 → 调度执行                         │
+│  main.py (50 行) - PDF 清洗入口                              │
+│  knowledge_extraction/__main__.py (5 行) - 知识提取入口       │
 └─────────────────────────────────────────────────────────────┘
                               │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    核心处理层 (Core)                         │
-│  processor.py (91 行)                                        │
-│  ├─ PDFProcessor.process_file()                             │
-│  └─ PDFProcessor.process_directory()                        │
-└─────────────────────────────────────────────────────────────┘
-                              │
-              ┌───────────────┼───────────────┐
-              ▼               ▼               ▼
-┌──────────────────┐ ┌──────────────┐ ┌──────────────┐
-│   OCR 识别       │ │   清洗引擎   │ │   质量验证   │
-│  crawler.py      │ │ cleaning.py  │ │ verifier.py  │
-│   (69 行)        │ │  (434 行)    │ │  (67 行)     │
-└──────────────────┘ └──────────────┘ └──────────────┘
+              ┌───────────────┴───────────────┐
+              ▼                               ▼
+┌──────────────────────────┐  ┌──────────────────────────────┐
+│  PDF 清洗层 (Phase 1)     │  │  知识提取层 (Phase 2)         │
+│  processor.py (90 行)     │  │  pipeline.py (308 行)         │
+│  ├─ crawler.py (69)       │  │  ├─ chapter_splitter.py (253) │
+│  ├─ cleaning.py (434)     │  │  ├─ metadata_annotator.py(113)│
+│  └─ verifier.py (67)      │  │  ├─ density_evaluator.py(205) │
+│                           │  │  ├─ content_refiner.py (174)  │
+│                           │  │  └─ deduplicator.py (163)     │
+└──────────────────────────┘  └──────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                   基础设施层 (Infrastructure)                │
 │  config.py (45 行) - 全局配置                                │
-│  utils/logger_system.py (48 行) - 日志系统（标准库 logging）│
+│  knowledge_extraction/config.py (176 行) - 知识提取配置       │
+│  utils/logger_system.py (48 行) - 日志系统                   │
 └─────────────────────────────────────────────────────────────┘
-```
-
-### 测试框架（NEW - 2026-02-23）
-
-```
+                              │
+                              ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    pytest 测试框架 (Tests)                   │
-├─────────────────────────────────────────────────────────────┤
-│  conftest.py (66 行) - 共享 fixtures                        │
-│  ├─ regex_cleaner fixture                                   │
-│  ├─ verifier fixture                                        │
-│  └─ sample_markdown, sample_latex_text fixtures             │
-│                                                              │
-│  test_cleaning.py (369 行) - RegexCleaning 单元测试          │
-│  ├─ TestRegexCleaningClean (10+ 个测试)                     │
-│  └─ TestLLMCleaningClean (mocked OpenAI)                    │
-│                                                              │
-│  test_verifier.py (145 行) - MarkdownVerifier 单元测试       │
-│  └─ TestMarkdownVerifier (5+ 个测试)                        │
+│                   测试层 (Tests)                              │
+│  tests/conftest.py (66 行) - 共享 fixtures                   │
+│  tests/test_cleaning.py (369 行) - 清洗测试                  │
+│  tests/test_verifier.py (145 行) - 验证测试                  │
+│  tests/test_knowledge_extraction.py (368 行) - 知识提取测试   │
 └─────────────────────────────────────────────────────────────┘
-         │
-         └─ 验证生产代码的正确性、边界情况、错误处理
 ```
 
 ## 外部依赖
@@ -76,7 +68,7 @@ data/      raw.md     regex.md     final.md       日志系统    output/N/
 | 服务 | 用途 | 端点 |
 |------|------|------|
 | MonkeyOCR | PDF → Markdown 转换 | http://localhost:7861/parse |
-| DeepSeek LLM | 语义清洗与重构 | http://110.42.53.85:11081/v1/chat/completions |
+| DeepSeek LLM | 语义清洗 / 密度评估 / 内容精炼 | http://110.42.53.85:11081/v1 |
 | Docker | OCR 服务容器化 | monkeyocr-api |
 
 ## 数据资源
@@ -85,20 +77,14 @@ data/      raw.md     regex.md     final.md       日志系统    output/N/
 |------|------|------|
 | `data/` | 16 份施工方案 PDF（178MB） | 原始输入 |
 | `output/1-16/` | 清洗后的 Markdown | 金标准样本 |
-| `templates/standard_50502.md` | GB/T 50502-2009 标准 | 施工方案 7 大章节规范 |
-| `task_log.json` | 执行日志 | 调试与追溯 |
+| `output/fragments.jsonl` | 692 条结构化知识片段 | 知识库原料 |
+| `templates/` | GB/T 50502 标准模板 | 10 章节规范 |
+| `docs/knowledge_base/` | 撰写指南 + 参考资料 | 生成系统素材 |
 
-## 核心功能
+## 未来扩展（Phase 3-5）
 
-1. **OCR 转换**: PDF → Markdown（MonkeyOCR API）
-2. **正则清洗**: 移除水印、页码、LaTeX 装饰符
-3. **LLM 清洗**: 标题合并、段落流优化、表格修复
-4. **质量验证**: 字数损失检测、LLM 幻觉检测、Markdown 合法性
-
-## 未来扩展（Phase 2-4）
-
-- qmd + sqlite-vec（案例向量检索）
-- LightRAG（知识图谱推理）
+- qmd + sqlite-vec（案例向量检索，按章节分库）
+- LightRAG（知识图谱推理，工序→危险源链）
 - LangGraph（多智能体系统）
   - 检测 Agent（章节完整性、依据时效性、合规性）
   - 生成 Agent（信息提取、内容生成、质量校验）
