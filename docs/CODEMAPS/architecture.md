@@ -80,6 +80,7 @@ output/   Section[]   +metadata   high/med/low  refined   unique   692 条片段
 | `output/fragments.jsonl` | 692 条结构化知识片段 | 知识库原料 |
 | `templates/` | GB/T 50502 标准模板 | 10 章节规范 |
 | `docs/knowledge_base/` | 撰写指南 + 参考资料 | 生成系统素材 |
+| `compliance_standards/standards_database.json` | 84 条结构化规范标准 | 时效性检查数据库 |
 
 ## 未来扩展（Phase 3-5）
 

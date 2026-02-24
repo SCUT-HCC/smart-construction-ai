@@ -1,4 +1,4 @@
-<!-- Generated: 2026-02-24 | Files scanned: output/, templates/, docs/ | Token estimate: ~550 -->
+<!-- Generated: 2026-02-24 | Files scanned: output/, templates/, docs/ | Token estimate: ~650 -->
 
 # 数据结构与存储
 
@@ -82,7 +82,10 @@ docs/knowledge_base/
 │     ├─ line_tower_template.md         # 线路塔基（49 fragments）
 │     └─ special_general_template.md    # 特殊/通用（17 fragments）
 ├─ process_references/      # 工艺参考库（4 类）
-├─ compliance_standards/    # 合规标准库
+├─ compliance_standards/    # 合规标准库（K11 + K18）
+│  ├─ standards_database.json  # K18: 结构化标准数据库（84 条，供 TimelinessChecker）
+│  ├─ reference_standards.md   # K11: 人类可读标准清单（82 条 Markdown 表格）
+│  └─ README.md                # 字段定义 + 集成说明 + 维护指南
 ├─ engineering_data/        # 工程数据需求清单
 ├─ targets/                 # 目标量化指标
 ├─ organization/            # 组织架构与岗位职责
@@ -119,6 +122,32 @@ docs/analysis/
 | LLM 幻觉率 | 0% | 禁止对话性前缀 |
 | 知识片段产出 | 692 条 | 16 份文档提取的有效片段 |
 | 去重阈值 | Jaccard > 0.8 | 跨文档相似片段合并 |
+
+---
+
+## 规范标准数据库（K18 产出）
+
+**路径**: `docs/knowledge_base/compliance_standards/standards_database.json`
+**用途**: 审核系统 `TimelinessChecker` 的核心数据源
+
+```json
+{
+  "total_count": 84,
+  "verified_count": 42,
+  "standards": [{
+    "id": "GB_50300_2013",
+    "standard_number": "GB 50300-2013",
+    "number_body": "50300",        // ← TimelinessChecker 查询主键
+    "version_year": 2013,          // ← 与文档引用年份比对
+    "status": "现行|废止|已替代|待查",
+    "replaces": "GB 50300-2001",   // ← 版本替代关系
+    "applicable_engineering_types": ["变电土建", ...],
+    "citation_frequency": "★★"
+  }]
+}
+```
+
+**统计**: 现行 73 | 待查 10 | 已替代 1 | 替代关系 8 组
 
 ---
 

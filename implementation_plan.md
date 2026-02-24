@@ -1,28 +1,27 @@
-# K17 实施计划：第六章分工程类型模板
+# K18 实施计划：规范标准结构化数据库
 
-> **任务编号**: K17
-> **目标**: 为 Ch6（施工方法及工艺要求）编写 4 类工程的结构化子章节模板，供生成 Agent 直接加载组装
-> **产出位置**: `docs/knowledge_base/writing_guides/ch06_templates/`
-> **日期**: 2026-02-24
-> **前置任务**: K15（Ch6 通用推理框架 ✅）、K16（692 条知识片段 ✅）
+> **任务编号**：K18
+> **优先级**：P0
+> **目标**：构建 JSON 格式的规范标准结构化数据库（≥30 条），含标准编号/版本/状态/年份，直接支撑审核系统的"编制依据时效性检查"（`TimelinessChecker`）
+> **日期**：2026-02-24
+> **前置任务**：K11（合规标准库 82 条 ✅）、K15（Ch1 撰写指南 ✅）
 
 ---
 
 ## 摘要
 
-K15 已完成 Ch6 的**通用推理框架**（`ch06_施工方法.md`），定义了工程类型分类决策树、检索路由策略和输出格式规范。K17 在此基础上，为 4 大工程类型（变电土建、变电电气、线路塔基、特殊/通用）分别编写**结构化子章节模板**，明确每种工程类型的 6.1~6.N 小节划分、每个小节的 5 段标准内容（流程→方法→参数→质控→注意事项），以及从 `process_references` 提取参数的具体槽位映射。
+将现有 `reference_standards.md` 中的 82 条 Markdown 表格数据，结合 16 份清洗后文档中的实际引用和 `ch01_编制依据.md` 的标准速查表，转化为机器可读的 JSON 结构化数据库。每条记录包含标准编号、完整名称、当前版本年份、发布状态（现行/废止/已替代）、替代关系、适用工程类型等字段。产出文件直接供 Phase 4 审核系统的 `TimelinessChecker` 消费。
 
 ---
 
-## 审查点
+## 审查点（需确认）
 
-| # | 待确认项 | 影响 | 当前处理方式 |
-|---|---------|------|------------|
-| 1 | **工程类型分类粒度** — K16 片段标注了 7 种类型（变电土建 80、线路塔基 49、地基处理 36、变电电气 27、设备安装 26、涂装工程 12、专题方案 5），但 ch06 速查表定义 4 大类 | 模板数量与片段映射 | 按 4 大类建模板，内部收编子类型：地基处理→变电土建、设备安装→变电电气、涂装工程+专题方案→特殊/通用 |
-| 2 | **模板是否包含完整输出示例** | 模板体积 | 每个模板末尾附录选取 3~5 条高密度 fragments 作为措辞范例，不在模板主体中重复 |
-| 3 | **与 process_references 的内容边界** | 是否重复 | `process_references/*.md` = 原始参数数据库（Agent 检索用）；K17 模板 = 组装蓝图（告诉 Agent 如何将参数组装成完整章节）。模板中引用参数位置但不复制参数值 |
-| 4 | **模板篇幅控制** | Agent prompt token 消耗 | 每个模板控制在 250~350 行，参数表仅保留关键参数槽位（非全量复制） |
-| 5 | **条件分支处理** — 线路塔基模板需区分挖孔桩 vs 灌注桩 vs 钢结构屋面 | 模板复杂度 | 用 `【如适用】` 标注可选小节，Agent 按实际工程子类型裁剪 |
+| # | 问题 | 影响 | 建议 |
+|---|------|------|------|
+| 1 | **标准版本校验深度**：是否需要逐条上网查询最新版本？还是基于已有信息 + 已知替代关系即可？ | 82 条逐一查询耗时较大 | 建议：优先覆盖 ★★/★ 高频标准（~35 条做深度校验），其余记录已知版本并标注 `"verified": false` |
+| 2 | **法律法规的处理**：`reference_standards.md` 中第 1 类"通用法律法规"（9 条）没有标准编号，是否纳入数据库？ | 时效性检查通常只检查带编号的标准 | 建议：纳入但标记 `type: "法律法规"`，编号字段填 `null`，`TimelinessChecker` 跳过无编号条目 |
+| 3 | **输出格式**：JSON 数组 vs JSONL？ | 影响后续代码读取方式 | 建议：JSON 对象（标准数量 <100，整体加载更方便，便于人工审阅和 diff） |
+| 4 | **企业标准（Q/CSG）版本查询**：南网内部标准难以公开查询 | 企标约 8 条 | 建议：使用文档引用版本，标注 `"source": "文档引用"` |
 
 ---
 
@@ -30,390 +29,343 @@ K15 已完成 Ch6 的**通用推理框架**（`ch06_施工方法.md`），定义
 
 ### 产出文件清单
 
-```
-docs/knowledge_base/writing_guides/ch06_templates/              [NEW 目录]
-├── README.md                                                    [NEW] 导航索引与格式规范
-├── civil_works_template.md                                      [NEW] 变电土建模板
-├── electrical_install_template.md                               [NEW] 变电电气模板
-├── line_tower_template.md                                       [NEW] 线路塔基模板
-└── special_general_template.md                                  [NEW] 特殊/通用模板
-```
-
-### 修改文件清单
-
 | 文件 | 操作 | 说明 |
 |------|------|------|
-| `docs/knowledge_base/writing_guides/ch06_施工方法.md` | `[MODIFY]` | 末尾添加 §7 K17 模板索引引用 |
-| `docs/knowledge_base/README.md` | `[MODIFY]` | 新增 `ch06_templates/` 目录描述和使用场景 |
-| `docs/PROJECT_OVERVIEW.md` | `[MODIFY]` | K17 状态从 🔲 更新为 ✅ |
-| `docs/CODEMAPS/INDEX.md` | `[MODIFY]` | 新增 K17 完成记录 |
-| `docs/CODEMAPS/data.md` | `[MODIFY]` | 新增 ch06_templates 数据描述 |
+| `docs/knowledge_base/compliance_standards/standards_database.json` | `[NEW]` | 核心产出：结构化标准数据库 |
+| `docs/knowledge_base/compliance_standards/README.md` | `[NEW]` | 数据库说明文档：字段定义、维护流程、集成说明 |
+| `docs/knowledge_base/compliance_standards/reference_standards.md` | `[保留]` | 原 Markdown 表格保留作为人类可读版本，不修改 |
+| `docs/PROJECT_OVERVIEW.md` | `[MODIFY]` | K18 状态从 🔲 更新为 ✅ |
+| `docs/CODEMAPS/INDEX.md` | `[MODIFY]` | 新增 K18 完成记录 |
+| `docs/CODEMAPS/data.md` | `[MODIFY]` | 新增 standards_database 数据描述 |
 
----
+### 数据库 Schema 设计
 
-## 设计方案
-
-### 1. `ch06_templates/README.md` [NEW]
-
-| 小节 | 内容 |
-|------|------|
-| 概述 | K17 定位：K15（通用框架）→ K17（分类型模板）→ Agent 组装 Ch6 |
-| 工程类型路由表 | 输入关键词 → 匹配模板文件（与 `ch06_施工方法.md` Step 1 决策树一致） |
-| 子类型映射表 | K16 的 7 种 fragment 工程类型 → 4 大模板的映射关系 |
-| Agent 调用流程 | 6 步标准流程（分类→加载模板→提取参数→组装→填充片段→校验） |
-| 统一格式说明 | 5 段标准结构规范 + 槽位标记语法 |
-
-**子类型映射表设计**：
-
-| K16 fragment 类型 | 片段数 | 归属模板 | 理由 |
-|------------------|-------|---------|------|
-| 变电土建 | 80 | civil_works | 直接对应 |
-| 地基处理 | 36 | civil_works | 强夯/地基属土建前置工序 |
-| 变电电气 | 27 | electrical_install | 直接对应 |
-| 设备安装 | 26 | electrical_install | 主变吊装归电气安装 |
-| 线路塔基 | 49 | line_tower | 直接对应 |
-| 涂装工程 | 12 | special_general | 防腐防火涂装 |
-| 专题方案 | 5 | special_general | 雨季/有限空间等 |
-
-### 2. `civil_works_template.md` [NEW] — 变电土建
-
-**适用工程**：主控楼、GIS 室、围墙、基础、强夯、土方
-
-**覆盖 fragment**：变电土建(80) + 地基处理(36) = 116 条
-
-**数据来源**：`process_references/civil_works.md`（7 节）
-
-**参考方案**：DOC 6（最全面）、DOC 11（强夯参数）、DOC 4（钢屋面）
-
-**子章节结构**（对应 `ch06_施工方法.md` §4.1 速查表）：
-
-| 模板小节 | 分项工程 | 参数来源 | 核心内容 |
-|---------|---------|---------|---------|
-| 6.1 | 施工工艺总流程 | civil_works 全文 | 文本流程图：基础→钢筋→模板→砌体→防水→给排水→验收 |
-| 6.2 | 基础工程 | civil_works §1(混凝土) + §4(强夯) | 混凝土浇筑工艺流程 + 养护参数 + 强夯工艺流程（如适用） |
-| 6.3 | 钢筋工程 | civil_works §2 | 加工→绑扎→焊接 + 接头检验标准 |
-| 6.4 | 模板工程 | civil_works §3 | 柱模/梁模安装 + 精度控制 |
-| 6.5 | 砌体工程 | civil_works §6 | 砌筑→抹灰 + 灰缝/拉结筋参数 |
-| 6.6 | 屋面防水工程 | civil_works §5 | 卷材铺贴 + 排水坡度 |
-| 6.7 | 给排水安装 | civil_works §7 | 管道试压 + 器具安装高度 |
-| 6.N | 验收标准汇总 | 各节质量控制标准 | 统一验收表格（检验项目/合格标准/检验方法/检查数量） |
-
-**每个分项的 5 段标准结构**：
-
-```
-#### 6.x.1 施工工艺流程
-{{文本流程图模板：从 process_references 对应节提取}}
-
-#### 6.x.2 施工方法
-1. {{步骤1}}：{{操作要求}}
-2. {{步骤2}}：{{操作要求}}
-...
-> 参数来源：civil_works.md §X.Y
-
-#### 6.x.3 关键技术参数
-| 参数 | 标准值 | 依据 |
-|------|-------|------|
-| {{槽位}} | {{从 civil_works.md §X 提取}} | {{标准编号}} |
-
-#### 6.x.4 质量控制要点
-- {{检索 quality/quality_control_points.md 对应工序}}
-- {{检索 fragments.jsonl 同类型 Ch7 片段}}
-
-#### 6.x.5 注意事项
-- 季节性措施：{{检索 special_general.md §1（雨季）/ §1.4（冬季）}}
-- 跨章节一致性：本节用到的设备→Ch5.3，材料→Ch5.2，标准→Ch1.3
+```json
+{
+  "version": "1.0",
+  "updated_at": "2026-02-24",
+  "description": "南方电网施工方案编制依据时效性检查用规范标准数据库",
+  "total_count": 82,
+  "verified_count": 35,
+  "categories": [
+    "通用法律法规与综合管理",
+    "电力与电网通用安全标准",
+    "质量验收通用标准",
+    "土建与地基基础工程",
+    "原材料标准",
+    "电气安装与变压器工程",
+    "起重与特种设备",
+    "钢结构、防腐与防火",
+    "安全、绿色施工与环境管理"
+  ],
+  "standards": [
+    {
+      "id": "GB_50300_2013",
+      "standard_number": "GB 50300-2013",
+      "standard_prefix": "GB",
+      "number_body": "50300",
+      "version_year": 2013,
+      "title": "建筑工程施工质量验收统一标准",
+      "type": "国家标准",
+      "status": "现行",
+      "replaced_by": null,
+      "replaces": "GB 50300-2001",
+      "category": "质量验收通用标准",
+      "applicable_engineering_types": ["变电土建", "线路塔基", "通用"],
+      "applicable_chapters": ["ch01", "ch06", "ch07"],
+      "citation_frequency": "★★",
+      "verified": true,
+      "source": "国标委官网",
+      "notes": null
+    }
+  ]
+}
 ```
 
-### 3. `electrical_install_template.md` [NEW] — 变电电气
+### 字段定义
 
-**适用工程**：主变、GIS、开关、电缆、电气、照明、接地
-
-**覆盖 fragment**：变电电气(27) + 设备安装(26) = 53 条
-
-**数据来源**：`process_references/electrical_install.md`（3 节）+ `special_general.md` §4
-
-**参考方案**：DOC 7（主变安装深度好）、DOC 6（建筑电气）、DOC 10（起重吊装）
-
-**子章节结构**（对应 `ch06_施工方法.md` §4.2 速查表 + 扩展）：
-
-| 模板小节 | 分项工程 | 参数来源 | 核心内容 |
-|---------|---------|---------|---------|
-| 6.1 | 施工工艺总流程 | electrical_install §1.1 | 施工准备→本体就位→附件→抽真空→注油→热油循环→密封→试验 |
-| 6.2 | 本体检查与内检 | electrical_install §1.2 | 环境条件表 + 内检 4 要点 |
-| 6.3 | 附件安装 | electrical_install §1.3 | 密封处理 + 法兰力矩表 + 套管 + 冷却系统 |
-| 6.4 | 抽真空及真空注油 | electrical_install §1.4 | 残压/保持时间/注油速度/温度 参数表 |
-| 6.5 | 热油循环与静置 | electrical_install §1.5~1.6 | 温度/时间/油量参数表 |
-| 6.6 | 整体密封试验 | electrical_install §1.7 | 压力/持续时间/合格标准 |
-| 6.7 | 建筑电气与照明 | electrical_install §2 | 线管敷设 + 穿线接线 + 配电箱（如适用） |
-| 6.8 | 防雷与接地 | electrical_install §3 | 焊接搭接 + 设备接地（如适用） |
-| 6.9 | 大型设备吊装 | special_general §4 | 吊装计算 + 安全要点【如适用】 |
-| 6.N | 验收标准汇总 | electrical_install §1.8 | 油务指标（击穿电压/微水/介损）+ 电气试验标准 |
-
-### 4. `line_tower_template.md` [NEW] — 线路塔基
-
-**适用工程**：塔基、挖孔桩、灌注桩、线路、铁塔、钢结构屋面
-
-**覆盖 fragment**：线路塔基(49)
-
-**数据来源**：`process_references/line_tower.md`（3 节）
-
-**参考方案**：DOC 1（挖孔桩详尽）、DOC 12（灌注桩参数全）、DOC 4（钢屋面）
-
-**子章节结构**（对应 `ch06_施工方法.md` §4.3 速查表 + 扩展）：
-
-| 模板小节 | 分项工程 | 参数来源 | 核心内容 |
-|---------|---------|---------|---------|
-| 6.1 | 施工工艺总流程 | line_tower §1.1 / §2.1 | 按桩型选流程（挖孔 vs 灌注）|
-| 6.2 | 测量放线 | DOC 1 高密度片段 | 直线塔/转角塔分坑方法 + 45°角度法 |
-| 6.3 | 土方开挖与护壁 | line_tower §1.2 | 每节深度/护壁强度/搭接长度 |
-| 6.4 | 通风与气体检测 | line_tower §1.3 | 检测频率/工具/深度阈值【挖孔桩适用】|
-| 6.5 | 钢筋笼制安 | line_tower §1.4 | 分段制作/吊装/临时加劲架 |
-| 6.6 | 混凝土浇筑 | line_tower §1.5 | 干式（串筒）+ 水下（导管法）两套方案 |
-| 6.7 | 灌注桩钻孔工艺 | line_tower §2 | 护筒→钻孔→清孔→终孔验收【灌注桩适用】|
-| 6.8 | 钢结构屋面 | line_tower §3 | 楼承板→栓钉→混凝土【GIS 室适用】|
-| 6.N | 验收标准汇总 | 各节 + line_tower §2.3~2.5 | 桩基检测 + 预偏参数 + 导线距离标准 |
-
-**条件分支说明**：
-- 挖孔桩工程：使用 6.2~6.6，跳过 6.7
-- 灌注桩工程：使用 6.2、6.5~6.7，跳过 6.3~6.4
-- 钢结构屋面：使用 6.8，可与桩基工程组合
-
-### 5. `special_general_template.md` [NEW] — 特殊/通用
-
-**适用工程**：防腐/防火涂料、雨季施工、有限空间、起重吊装
-
-**覆盖 fragment**：涂装工程(12) + 专题方案(5) = 17 条
-
-**数据来源**：`process_references/special_general.md`（6 节）
-
-**参考方案**：DOC 2/3（防腐防火）、DOC 8（雨季）、DOC 9（有限空间）、DOC 10（起重）
-
-**子章节结构**（对应 `ch06_施工方法.md` §4.4 速查表 + 扩展）：
-
-| 模板小节 | 分项工程 | 参数来源 | 核心内容 |
-|---------|---------|---------|---------|
-| 6.1 | 施工工艺总流程 | 按专项选择 | 对应专项的总流程 |
-| 6.2 | 防腐涂装 | special_general §3.1~3.2 | 表面处理(Sa2.5) + 涂层体系(底/中/面) + 涂装参数【如适用】|
-| 6.3 | 防火涂料 | special_general §3.3 | 基层→喷涂→层间间隔→质检【如适用】|
-| 6.4 | 雨季施工措施 | special_general §1 | 混凝土/钢筋/临电/防台 4 类措施【如适用】|
-| 6.5 | 有限空间作业 | special_general §2 | 七不准 + 通风 + 气体检测 + 监护【如适用】|
-| 6.6 | 起重吊装 | special_general §4 | 桥吊/塔吊安装拆除流程 + 安全要点【如适用】|
-| 6.7 | 绿色施工措施 | special_general §5~6 | 扬尘控制 + 噪音 + 水资源【如适用】|
-| 6.N | 验收标准汇总 | 各节 | 涂层检测 + 通风合格 + 吊装验收 |
-
-**组合式模板说明**：此模板为菜单式结构，Agent 根据具体专项工程选择需要的小节组合。典型组合：
-- 防腐防火涂装工程 → 6.2 + 6.3 + 6.N
-- 雨季专项方案 → 6.4 + 6.N
-- 有限空间作业方案 → 6.5 + 6.N
-- 起重吊装专项方案 → 6.6 + 6.N
-
-### 6. `ch06_施工方法.md` [MODIFY]
-
-在第 265 行（文件末尾）后追加 K17 模板索引段：
-
-```markdown
----
-
-## 7. K17 分工程类型模板索引
-
-以上通用框架确定"检索什么"，以下模板确定"怎么组装"：
-
-| 工程类型 | 模板文件 | 覆盖子工程 | fragment 数 |
-|---------|---------|-----------|------------|
-| 变电土建 | `ch06_templates/civil_works_template.md` | 混凝土+钢筋+模板+强夯+防水+砌体+给排水 | 116 |
-| 变电电气 | `ch06_templates/electrical_install_template.md` | 主变安装+建筑电气+防雷接地+设备吊装 | 53 |
-| 线路塔基 | `ch06_templates/line_tower_template.md` | 挖孔桩+灌注桩+钢结构屋面 | 49 |
-| 特殊/通用 | `ch06_templates/special_general_template.md` | 防腐防火+雨季+有限空间+起重吊装 | 17 |
-
-> **调用方式**：Agent 完成 Step 1（工程类型分类）后，加载对应模板确定 6.1~6.N 结构，再按 Step 2~3 检索参数并组装。
-```
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `id` | string | ✅ | 唯一标识，格式 `{前缀}_{编号}_{年份}`，如 `GB_50300_2013`；法律法规用 `LAW_安全生产法` |
+| `standard_number` | string/null | ✅ | 完整标准编号，如 `GB 50300-2013`；法律法规填 `null` |
+| `standard_prefix` | string | ✅ | 标准类别前缀：`GB`/`GB/T`/`DL`/`DL/T`/`JGJ`/`JGJ/T`/`Q/CSG`/`CECS`/`GBZ/T`/`HJ/T`/`法规`/`部门规章` |
+| `number_body` | string/null | ✅ | 标准编号主体（不含前缀和年份），如 `50300`；法律法规填 `null` |
+| `version_year` | int/null | ✅ | 当前版本年份；法律法规填最新修订年份或 `null` |
+| `title` | string | ✅ | 标准全称 |
+| `type` | enum | ✅ | `国家标准`/`推荐性国标`/`行业标准`/`推荐性行标`/`企业标准`/`法律法规`/`部门规章`/`协会标准` |
+| `status` | enum | ✅ | `现行`/`废止`/`已替代`/`待查` |
+| `replaced_by` | string/null | — | 如已废止/替代，填新标准完整编号 |
+| `replaces` | string/null | — | 本标准替代的旧标准编号 |
+| `category` | string | ✅ | 归属类别（对应 `reference_standards.md` 的 9 大分类 + 附录） |
+| `applicable_engineering_types` | string[] | ✅ | 适用工程类型：`变电土建`/`变电电气`/`线路塔基`/`设备安装`/`涂装工程`/`专题方案`/`绿色施工`/`通用` |
+| `applicable_chapters` | string[] | ✅ | 适用章节：`ch01`~`ch10` |
+| `citation_frequency` | string | ✅ | 引用频率：`★★`(核心必引) / `★`(高频) / `—`(低频) |
+| `verified` | bool | ✅ | 是否已人工核实当前版本为最新 |
+| `source` | string | — | 版本信息来源：`国标委官网`/`工标网`/`文档引用`/`待查` |
+| `notes` | string/null | — | 备注（废止原因、特殊说明等） |
 
 ---
 
-## 统一模板格式规范
+## 执行步骤
 
-所有 4 个模板文件必须遵循以下统一格式：
+### Phase 1：数据提取与初始化
 
-```markdown
-# Ch6 施工方法 — {{工程类型}}模板
+**步骤 1.1**：从 `reference_standards.md` 解析 82 条记录
 
-> **适用工程**：{{关键词列表}}
-> **数据来源**：`process_references/{{文件名}}`
-> **覆盖 fragment 类型**：{{K16 工程类型 → 片段数}}
-> **参考方案**：{{DOC 编号列表}}
+手工将 9 个分类表格 + 2 个附录中的所有条目转化为 JSON：
+- 从表格中提取 `standard_number`、`title`、`citation_frequency`
+- 自动推导 `standard_prefix`、`number_body`、`version_year`（从编号中的年份部分）
+- 按表格所在分类填充 `category`
+- 根据前缀推导 `type`（GB→国家标准、GB/T→推荐性国标、DL→行业标准、Q/CSG→企业标准等）
+- 初始状态标记为 `"status": "待查"`, `"verified": false`
 
----
+**步骤 1.2**：补充 `applicable_engineering_types` 和 `applicable_chapters`
 
-## 1. 模板使用说明
-（6 步标准流程：分类→加载→提取参数→组装→填充→校验）
+交叉参考以下数据源：
+- `ch01_编制依据.md` 第 4 节的工程类型→标准速查表（4.1 变电土建 / 4.2 变电电气 / 4.3 线路土建 / 4.4 设备安装 / 4.5 特殊专项）
+- `ch06_templates/` 中各模板的验收标准章节
+- `03-chapter-specification.md` 中各章的"质量判据"引用的标准
 
-## 2. 施工工艺总流程（6.1）
-（文本流程图 + 说明）
+**步骤 1.3**：生成唯一 `id`
 
-## 3. 分项工程模板（6.2~6.N-1）
-### 3.x {{分项名称}}
-#### 3.x.1 施工工艺流程
-#### 3.x.2 施工方法
-#### 3.x.3 关键技术参数
-#### 3.x.4 质量控制要点
-#### 3.x.5 注意事项
+规则：
+- 有标准编号：`{prefix}_{number_body}_{year}`，斜杠替换为下划线，如 `GB/T 50784-2013` → `GB_T_50784_2013`
+- 法律法规：`LAW_{简称}`，如 `LAW_安全生产法`
+- 企业标准：`Q_CSG_{编号}_{year}`
 
-## 4. 验收标准汇总（6.N）
-（统一格式验收表格模板）
+### Phase 2：版本校验（核心工作）
 
-## 5. 跨章节一致性检查清单
-- [ ] Ch5.3 设备清单 ⊇ 本章设备
-- [ ] Ch5.2 材料清单 ⊇ 本章材料
-- [ ] Ch1.3 编制依据 ⊇ 本章引用标准
-- [ ] Ch4 工序顺序 = 本章流程顺序
-- [ ] Ch7 质量控制 ⊇ 本章关键工序
-- [ ] Ch8 安全措施 ⊇ 本章危险工序
+**步骤 2.1**：核心标准深度校验（目标 ≥35 条）
 
-## 6. 附录：参考片段选编
-（从 fragments.jsonl 选取 3~5 条高密度片段作为措辞范例）
-```
+优先校验 `citation_frequency` 为 ★★ 的核心必引标准（约 15 条）+ ★ 高频标准（约 20 条）：
 
-**槽位标记语法**：
-- `{{槽位名}}` — Agent 必须填充的内容
-- `【如适用】` — 根据工程子类型决定是否包含
-- `> 参数来源：xxx.md §Y` — 标注参数提取位置
+已知的重要版本更替（预填充）：
 
----
-
-## 数据利用策略
-
-### fragments 利用矩阵
-
-| 工程类型 | Ch6 片段数 | 高密度 | 策略 |
-|---------|-----------|--------|------|
-| 变电土建+地基处理 | 116 | ~87 | 片段充足，选取最优 5 条入附录；优先使用 DOC 6/11 片段 |
-| 线路塔基 | 49 | ~37 | 片段充足，优先使用 DOC 1/12 的测量和浇筑片段 |
-| 变电电气+设备安装 | 53 | ~40 | 片段适中，DOC 7（主变）和 DOC 10（起重）为核心 |
-| 涂装工程+专题方案 | 17 | ~13 | 片段较少，重度依赖 `process_references/special_general.md` 原始数据补充 |
-
-### 数据源分工
-
-| 数据源 | 在模板中的角色 | 路径 |
-|-------|-------------|------|
-| `process_references/*.md` | **权威参数**：工艺流程图、技术参数表、验收标准 | `docs/knowledge_base/process_references/` |
-| `fragments.jsonl` (Ch6) | **措辞范例**：附录中展示理想输出样式 | `docs/knowledge_base/fragments/fragments.jsonl` |
-| `ch06_施工方法.md` | **上游设计**：分类决策树、检索路由、输出格式 | `docs/knowledge_base/writing_guides/` |
-| `quality_control_points.md` | **质控要点**：6.x.4 段落的内容来源 | `docs/knowledge_base/quality/` |
-| `03-chapter-specification.md` | **验收标准**：Ch6 的质量判据定义 | `docs/architecture/` |
-
----
-
-## 执行顺序
-
-| 步骤 | 产出 | 依赖 |
+| 旧版 | 新版 | 说明 |
 |------|------|------|
-| 1 | `ch06_templates/README.md` | 无 — 先建索引和格式规范 |
-| 2 | `ch06_templates/civil_works_template.md` | README — 数据最充足(116 片段)，先建样板 |
-| 3 | `ch06_templates/electrical_install_template.md` | civil_works 模板（参考格式一致性） |
-| 4 | `ch06_templates/line_tower_template.md` | 同上 |
-| 5 | `ch06_templates/special_general_template.md` | 同上 |
-| 6 | 修改 `ch06_施工方法.md` 末尾添加 §7 | 4 个模板完成后 |
-| 7 | 更新 `knowledge_base/README.md` | 同上 |
-| 8 | 更新 `PROJECT_OVERVIEW.md` + `CODEMAPS/` | 全部完成后 |
+| GB 50300-2001 | GB 50300-2013 | 建筑工程施工质量验收统一标准 |
+| GB 50204-2002 | GB 50204-2015 | 混凝土结构施工质量验收 |
+| GB 175-2007 | GB 175-2020 | 通用硅酸盐水泥 |
+| GB 1499.2-2007 | GB 1499.2-2018 | 热轧带肋钢筋 |
+| GB 50205-2001 | GB 50205-2020 | 钢结构工程施工质量验收 |
+| GB 8923-88 | GB/T 8923.1-2011 | 涂装前钢材表面处理 |
+| GB 8978-1996 | GB 8978-2002 | 污水综合排放标准 |
+| JGJ 52-2006 | JGJ 52-2006 | 待核实是否有新版 |
+| GB 50254~50259-96 | 已拆分为多个独立标准 | 特殊情况，需备注说明 |
+
+校验来源（按优先级）：
+1. 国家标准全文公开系统 (openstd.samr.gov.cn)
+2. 工标网 / 标准信息服务平台
+3. 16 份文档中引用的实际版本号交叉验证
+
+**步骤 2.2**：标注校验结果
+
+对每条已校验标准更新：
+- `status` → `现行` / `废止` / `已替代`
+- `replaced_by` / `replaces` 替代关系
+- `verified` → `true`
+- `source` → 实际查询来源
+
+**步骤 2.3**：其余标准基本标注
+
+对未深度校验的标准（约 47 条）：
+- 使用 `reference_standards.md` 中已有的版本年份
+- 标记 `"verified": false`, `"source": "文档引用"`
+- `status` 标记为 `"待查"`（除非有明确信息）
+
+### Phase 3：数据组装与质量验证
+
+**步骤 3.1**：组装最终 JSON 文件
+
+- 按 `category` 分组排列，组内按 `citation_frequency` 降序
+- 计算并填充顶层元数据：`total_count`、`verified_count`
+- 确保 JSON 格式正确（UTF-8 编码，缩进 2 空格）
+
+**步骤 3.2**：数据完整性检查
+
+- [ ] 总条目数 ≥ 82（覆盖 `reference_standards.md` 全部 82 条 + 附录 2 条）
+- [ ] 已校验条目数 ≥ 30（满足 K18 最低要求）
+- [ ] 所有必填字段无 `undefined` 或空值
+- [ ] `standard_number` 格式统一
+- [ ] `id` 全局唯一
+- [ ] `status` 取值仅为 `现行`/`废止`/`已替代`/`待查`
+- [ ] 所有 `citation_frequency: "★★"` 的标准均已 `verified: true`
+- [ ] `applicable_engineering_types` 无空数组
+- [ ] `applicable_chapters` 至少包含 `ch01`
+
+**步骤 3.3**：审核系统兼容性验证
+
+确保数据格式满足 `07-review-system.md` 中 `TimelinessChecker` 的预期查询模式：
+
+```python
+# TimelinessChecker 预期使用方式（伪代码）
+db = json.load("standards_database.json")
+index = {s["number_body"]: s for s in db["standards"] if s["number_body"]}
+
+for cited in extract_citations(document_chapter1):
+    # cited = {"prefix": "GB", "number": "50204", "year": 2002}
+    match = index.get(cited["number"])
+    if match:
+        if match["version_year"] and cited["year"] < match["version_year"]:
+            report.add_warning(
+                f"⚠️ {cited['prefix']} {cited['number']}-{cited['year']}"
+                f" → 已替代为 {match['standard_number']}"
+            )
+        if match["status"] == "废止":
+            report.add_error(f"🔴 {match['standard_number']} 已废止")
+```
+
+关键设计点：
+- `number_body` 作为查询主键（同一标准不同版本 number_body 相同）
+- `version_year` 用于版本比较
+- `status` 用于废止标准告警
+
+### Phase 4：文档编写
+
+**步骤 4.1**：编写 `compliance_standards/README.md`
+
+内容：
+1. 数据库用途与适用范围
+2. 文件说明（standards_database.json vs reference_standards.md）
+3. 字段定义与取值说明
+4. 数据来源与校验方法
+5. 维护指南：如何新增/更新/废止标准
+6. 与审核系统的集成说明（TimelinessChecker 接口）
+7. 统计摘要（按类别/状态/校验状态分布）
+
+**步骤 4.2**：更新项目文档
+
+- `PROJECT_OVERVIEW.md`：K18 状态 🔲 → ✅
+- `CODEMAPS/INDEX.md`：新增 K18 完成记录
+- `CODEMAPS/data.md`：新增 standards_database.json 数据描述
 
 ---
 
 ## 验证计划
 
-### 1. 结构完整性验证
-
 ```bash
-# 检查 5 个文件是否创建
-ls docs/knowledge_base/writing_guides/ch06_templates/
-
-# 预期输出:
-# README.md
-# civil_works_template.md
-# electrical_install_template.md
-# line_tower_template.md
-# special_general_template.md
-```
-
-### 2. 内容覆盖度验证
-
-| 验证项 | 检查方法 | 预期结果 |
-|-------|---------|---------|
-| 每个模板包含 6.1~6.N 完整结构 | 人工检查各模板目录 | 4/4 模板有完整子章节 |
-| 每个分项遵循 5 段标准结构 | `grep -c "施工工艺流程\|施工方法\|关键技术参数\|质量控制要点\|注意事项"` | 每分项 ≥5 处匹配 |
-| 参数槽位标记完整 | `grep -c "{{" *.md` | 每模板 ≥20 个槽位 |
-| 跨章节一致性检查清单 | 检查每模板 §5 | 4/4 模板包含 6 项检查 |
-| 附录片段选编存在 | 检查每模板 §6 | 4/4 模板包含 3~5 条范例 |
-
-### 3. 与上游设计一致性验证
-
-```bash
-# 验证模板子章节与 ch06 速查表（§4.1~§4.4）对齐
-# ch06_施工方法.md 第 123-168 行定义了 4 类工程的速查表
-
+# 1. JSON 格式校验 + 基本统计
 conda run -n sca python -c "
-import os
-templates_dir = 'docs/knowledge_base/writing_guides/ch06_templates'
-required = ['README.md', 'civil_works_template.md',
-            'electrical_install_template.md',
-            'line_tower_template.md', 'special_general_template.md']
-for f in required:
-    path = os.path.join(templates_dir, f)
-    exists = os.path.exists(path)
-    size = os.path.getsize(path) if exists else 0
-    print(f\"{'✅' if exists else '❌'} {f} ({size} bytes)\")
+import json
+with open('docs/knowledge_base/compliance_standards/standards_database.json', encoding='utf-8') as f:
+    db = json.load(f)
+print(f'版本: {db[\"version\"]}')
+print(f'总条目: {db[\"total_count\"]}')
+print(f'已校验: {db[\"verified_count\"]}')
+standards = db['standards']
+assert len(standards) == db['total_count'], f'条目数不一致: {len(standards)} vs {db[\"total_count\"]}'
+assert db['total_count'] >= 30, f'条目数不足 30: {db[\"total_count\"]}'
+assert db['verified_count'] >= 30, f'校验数不足 30: {db[\"verified_count\"]}'
+print('基本校验通过 ✅')
 "
+
+# 2. 必填字段完整性检查
+conda run -n sca python -c "
+import json
+REQUIRED = ['id','standard_number','standard_prefix','number_body','title',
+            'type','status','category','applicable_engineering_types',
+            'applicable_chapters','citation_frequency','verified']
+with open('docs/knowledge_base/compliance_standards/standards_database.json', encoding='utf-8') as f:
+    db = json.load(f)
+errors = []
+for s in db['standards']:
+    for field in REQUIRED:
+        if field not in s:
+            errors.append(f'{s.get(\"id\",\"?\")} 缺少字段 {field}')
+if errors:
+    for e in errors:
+        print(f'❌ {e}')
+else:
+    print(f'所有 {len(db[\"standards\"])} 条记录必填字段完整 ✅')
+"
+
+# 3. ID 唯一性检查
+conda run -n sca python -c "
+import json
+from collections import Counter
+with open('docs/knowledge_base/compliance_standards/standards_database.json', encoding='utf-8') as f:
+    db = json.load(f)
+ids = [s['id'] for s in db['standards']]
+dupes = [id for id, cnt in Counter(ids).items() if cnt > 1]
+assert not dupes, f'重复 ID: {dupes}'
+print(f'所有 {len(ids)} 个 ID 唯一 ✅')
+"
+
+# 4. 核心标准校验覆盖率
+conda run -n sca python -c "
+import json
+with open('docs/knowledge_base/compliance_standards/standards_database.json', encoding='utf-8') as f:
+    db = json.load(f)
+core = [s for s in db['standards'] if s['citation_frequency'] in ('★★', '★★★')]
+verified_core = [s for s in core if s['verified']]
+print(f'核心标准(★★+): {len(core)} 条')
+print(f'其中已校验: {len(verified_core)} 条')
+not_verified = [s['id'] for s in core if not s['verified']]
+if not_verified:
+    print(f'⚠️ 未校验的核心标准: {not_verified}')
+print('校验覆盖率检查完成')
+"
+
+# 5. 状态分布统计
+conda run -n sca python -c "
+import json
+from collections import Counter
+with open('docs/knowledge_base/compliance_standards/standards_database.json', encoding='utf-8') as f:
+    db = json.load(f)
+status_dist = Counter(s['status'] for s in db['standards'])
+type_dist = Counter(s['type'] for s in db['standards'])
+cat_dist = Counter(s['category'] for s in db['standards'])
+print('=== 状态分布 ===')
+for k, v in status_dist.most_common():
+    print(f'  {k}: {v}')
+print('=== 类型分布 ===')
+for k, v in type_dist.most_common():
+    print(f'  {k}: {v}')
+print('=== 类别分布 ===')
+for k, v in cat_dist.most_common():
+    print(f'  {k}: {v}')
+"
+
+# 6. README 存在性检查
+ls -la docs/knowledge_base/compliance_standards/README.md
 ```
 
-### 4. 格式一致性验证
+---
 
-| 验证项 | 预期 |
-|-------|------|
-| 每个模板头部包含 4 行元信息（适用工程、数据来源、覆盖 fragment、参考方案） | ✅ |
-| 每个模板包含 §1 模板使用说明 | ✅ |
-| 每个模板包含 §5 跨章节一致性检查清单（6 项） | ✅ |
-| 每个模板包含 §6 附录：参考片段选编 | ✅ |
-| 所有文档使用中文 | ✅ |
-| 【如适用】标记用于可选小节 | ✅ |
+## 依赖与风险
 
-### 5. 文档同步验证
-
-```bash
-# 验证引用链完整
-grep -l "ch06_templates" docs/knowledge_base/writing_guides/ch06_施工方法.md
-grep -l "ch06_templates" docs/knowledge_base/README.md
-grep "K17" docs/PROJECT_OVERVIEW.md | head -3
-grep "K17" docs/CODEMAPS/INDEX.md | head -3
-```
+| 风险 | 概率 | 影响 | 缓解措施 |
+|------|------|------|---------|
+| 国标委官网查询受限/缓慢 | 中 | 版本校验效率低 | 使用已知替代关系预填充 + 多数据源交叉验证 |
+| 企业标准（Q/CSG）版本无法公开查询 | 高 | 8 条企标版本不确定 | 标注 `"source": "文档引用"`, `"verified": false` |
+| 部分标准存在多个平行版本（如 GB 50254~50259-96 合并拆分） | 低 | 状态标注困难 | 在 `notes` 中详细说明特殊情况 |
+| 标准版本信息过时（查询时间点限制） | 低 | 数据库上线后可能已有新版 | README 中说明维护周期（建议半年更新一次） |
 
 ---
 
-## 风险与缓解
+## 与后续任务的关系
 
-| 风险 | 影响 | 缓解措施 |
-|------|------|---------|
-| 特殊/通用模板片段仅 17 条，附录示例不足 | 模板质量较低 | 直接从 `process_references/special_general.md` 提取完整工艺描述作为模板骨架，不强依赖 fragments |
-| 模板过于僵化，无法覆盖新工程类型 | Agent 遇到未知类型无模板可用 | README 中说明兜底策略 — 未匹配类型回退到 `ch06_施工方法.md` 通用推理框架 |
-| 模板槽位过多导致 Agent prompt 超长 | token 消耗大 | 每个模板控制在 350 行以内，仅保留关键参数槽位 |
-| 条件分支过多导致模板可读性差 | Agent 解析困难 | 用清晰的【如适用】标记 + 在 §1 说明典型组合模式 |
-| 与 process_references 参数版本不同步 | 参数不一致 | 模板中引用参数位置（`civil_works.md §1.1`）而非复制参数值，保持单一数据源 |
-
----
-
-## 产出交付清单
-
-| # | 产出 | 文件数 | 预估行数 |
-|---|------|-------|---------|
-| 1 | 导航索引 README | 1 | ~80 |
-| 2 | 变电土建模板 | 1 | ~300 |
-| 3 | 变电电气模板 | 1 | ~300 |
-| 4 | 线路塔基模板 | 1 | ~280 |
-| 5 | 特殊/通用模板 | 1 | ~250 |
-| 6 | 修改 ch06_施工方法.md | - | +20 行 |
-| 7 | 修改 knowledge_base/README.md | - | +10 行 |
-| 8 | 修改 PROJECT_OVERVIEW.md | - | +2 行 |
-| 9 | 修改 CODEMAPS/INDEX.md + data.md | - | +10 行 |
-| **合计** | **5 个新文件 + 4 个修改文件** | **5 [NEW]** | **~1,230 行** |
+| 下游任务 | 依赖方式 | 说明 |
+|---------|---------|------|
+| **K19** 章节标题映射规则 | 无直接依赖 | 可共享标准编号正则模式 |
+| **S17** TimelinessChecker | **强依赖** | 直接消费 `standards_database.json` 做版本比对 |
+| **S18** ComplianceChecker | 间接依赖 | 引用标准的有效性验证 |
+| **Ch1 生成 Agent** | 间接依赖 | 标准选择时参考数据库确保引用最新版本 |
 
 ---
 
-*计划编制：2026-02-24 | 基于 docs/ 全部文档 + K16 fragments 数据分析*
+## 产出验收标准
+
+| 维度 | 指标 | 阈值 |
+|------|------|------|
+| 数据量 | 总条目数 | ≥ 82 条（完整覆盖 `reference_standards.md`） |
+| 校验覆盖 | 已校验条目数 | ≥ 30 条（所有核心标准） |
+| 格式合规 | JSON 可解析 | `json.load()` 无报错 |
+| 字段完整 | 必填字段覆盖率 | 100% |
+| ID 唯一性 | 无重复 ID | 0 重复 |
+| 审核兼容 | 支持 TimelinessChecker 查询 | 通过 number_body 索引测试 |
+| 文档配套 | README 完整 | 包含字段定义 + 维护指南 + 集成说明 |
+
+---
+
+*计划编制：2026-02-24 | 基于 docs/ 全部文档 + reference_standards.md 82 条数据分析*

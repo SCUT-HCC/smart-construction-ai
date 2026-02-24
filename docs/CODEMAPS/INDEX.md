@@ -1,4 +1,4 @@
-<!-- Generated: 2026-02-24 | Files scanned: 20 Python modules | Token estimate: ~2200 -->
+<!-- Generated: 2026-02-24 | Files scanned: 20 Python modules + 84 standards | Token estimate: ~2300 -->
 
 # 代码地图索引 - 南网施工方案智能辅助系统
 
@@ -91,6 +91,7 @@
 | 知识提取管道怎么运作？ | backend.md | 知识提取链路 |
 | 输出数据在哪里？ | data.md | 输出数据 |
 | fragments.jsonl 格式是什么？ | data.md | 知识片段 |
+| 规范标准数据库怎么查询？ | data.md | 规范标准数据库 |
 | 如何配置 API Key？ | dependencies.md | 环境变量配置 |
 | 章节标准化映射规则？ | backend.md | ChapterSplitter |
 | 密度评估的判定标准？ | backend.md | DensityEvaluator |
@@ -184,6 +185,7 @@ smart-construction-ai/
 
 | 日期 | Commit | 变更 |
 |------|--------|------|
+| 2026-02-24 | — | 完成 K18 规范标准结构化数据库（84 条 JSON，42 条已校验，8 组替代关系） |
 | 2026-02-24 | — | 完成 K17 第六章分工程类型模板（4 大类 + 完整输出示例） |
 | 2026-02-24 | 9819fb5 | 完成 K16 知识提取管道，产出 692 条结构化知识片段 |
 | 2026-02-24 | ca2b6e1 | 补齐剩余 7 章撰写指南及配套参考资料 |
@@ -199,4 +201,4 @@ smart-construction-ai/
 - **扫描文件**: 20 个 Python 模块（核心 7 + 知识提取 7 + 测试 4 + 配置 + utils）
 - **总代码行数**: ~2500 行（~1700 生产 + ~950 测试）
 - **最后更新**: 2026-02-24（与代码同步）
-- **重大变更**: 新增 knowledge_extraction/ 模块（7 文件, ~1400 行）
+- **重大变更**: 新增 knowledge_extraction/ 模块（7 文件, ~1400 行）；新增 standards_database.json（84 条结构化标准）
