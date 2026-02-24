@@ -74,8 +74,21 @@ templates/
 
 ```
 docs/knowledge_base/
-├─ 各章节撰写指南（Ch1-Ch10）
-└─ 配套参考资料
+├─ writing_guides/          # 各章节撰写指南（Ch1-Ch10）
+│  └─ ch06_templates/       # K17: 第六章分工程类型模板（4 大类）
+│     ├─ README.md                      # 导航索引 + 子类型映射 + 格式规范
+│     ├─ civil_works_template.md        # 变电土建（116 fragments）
+│     ├─ electrical_install_template.md # 变电电气（53 fragments）
+│     ├─ line_tower_template.md         # 线路塔基（49 fragments）
+│     └─ special_general_template.md    # 特殊/通用（17 fragments）
+├─ process_references/      # 工艺参考库（4 类）
+├─ compliance_standards/    # 合规标准库
+├─ engineering_data/        # 工程数据需求清单
+├─ targets/                 # 目标量化指标
+├─ organization/            # 组织架构与岗位职责
+├─ quality/                 # 质量管理参考
+├─ safety_knowledge/        # 安全管理参考
+└─ emergency/               # 应急管理参考
 ```
 
 ### 6. 分析报告（docs/analysis/）

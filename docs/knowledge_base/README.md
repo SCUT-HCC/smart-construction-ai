@@ -18,6 +18,12 @@ docs/knowledge_base/
 │   ├── ch04_施工安排.md              # Agent 角色 + 推理链 + 输出模板
 │   ├── ch05_施工准备.md              # Agent 角色 + 推理链 + 输出模板
 │   ├── ch06_施工方法.md              # Agent 角色 + 推理链 + 检索路由框架
+│   ├── ch06_templates/               # Ch6 分工程类型模板（K17 产出）
+│   │   ├── README.md                 # 导航索引 + 子类型映射 + 格式规范
+│   │   ├── civil_works_template.md   # 变电土建（混凝土+钢筋+模板+强夯+防水+砌体+给排水）
+│   │   ├── electrical_install_template.md  # 变电电气（主变+建筑电气+防雷接地+吊装）
+│   │   ├── line_tower_template.md    # 线路塔基（挖孔桩+灌注桩+钢结构屋面）
+│   │   └── special_general_template.md     # 特殊/通用（防腐防火+雨季+有限空间+起重）
 │   ├── ch07_质量管理.md              # Agent 角色 + 推理链 + 输出模板
 │   ├── ch08_安全管理.md              # Agent 角色 + 推理链 + 输出模板
 │   ├── ch09_应急预案.md              # Agent 角色 + 推理链 + 输出模板
@@ -63,7 +69,7 @@ docs/knowledge_base/
 | 生成 Ch3 施工组织 | `writing_guides/ch03_施工组织机构.md` → `organization/role_templates.md` | 按工程规模选择架构模板，检索岗位职责 |
 | 生成 Ch4 施工安排 | `writing_guides/ch04_施工安排.md` → `targets/quantified_targets.md` + `process_references/*.md` | 先读指南确定框架，从目标库取指标，从工艺库取流程 |
 | 生成 Ch5 施工准备 | `writing_guides/ch05_施工准备.md` → `process_references/*.md` | 从 Ch6 反推设备/材料需求，按工程类型检索清单 |
-| 生成 Ch6 施工方法 | `writing_guides/ch06_施工方法.md` → `process_references/*.md` | 按工程类型路由到对应工艺参考库 |
+| 生成 Ch6 施工方法 | `writing_guides/ch06_施工方法.md` → `ch06_templates/*.md` → `process_references/*.md` | 先读通用框架分类，再加载对应模板确定子章节，最后检索参数 |
 | 生成 Ch7 质量管理 | `writing_guides/ch07_质量管理.md` → `quality/quality_control_points.md` + `targets/quantified_targets.md` | 从 Ch6 反推质量控制点，加载量化目标 |
 | 生成 Ch8 安全管理 | `writing_guides/ch08_安全管理.md` → `safety_knowledge/hazard_sources.md` + `safety_knowledge/safety_measures.md` | 从 Ch6 反推危险源，匹配安全措施 |
 | 生成 Ch9 应急预案 | `writing_guides/ch09_应急预案.md` → `emergency/emergency_procedures.md` | 从 Ch8 反推事故类型，检索处置程序 |

@@ -136,7 +136,7 @@ smart-construction-ai/
 ├── data/ - 16份原始 PDF
 ├── output/ - 清洗后的 Markdown + fragments.jsonl
 ├── docs/analysis/ - 章节分析报告
-├── docs/knowledge_base/ - 知识库资料（撰写指南 + 参考）
+├── docs/knowledge_base/ - 知识库资料（撰写指南 + 参考 + Ch6 分类模板）
 ├── requirements.txt - Python 依赖
 └── .env - 环境变量
 ```
@@ -184,6 +184,7 @@ smart-construction-ai/
 
 | 日期 | Commit | 变更 |
 |------|--------|------|
+| 2026-02-24 | — | 完成 K17 第六章分工程类型模板（4 大类 + 完整输出示例） |
 | 2026-02-24 | 9819fb5 | 完成 K16 知识提取管道，产出 692 条结构化知识片段 |
 | 2026-02-24 | ca2b6e1 | 补齐剩余 7 章撰写指南及配套参考资料 |
 | 2026-02-23 | d27a1f9 | 新建施工方案知识库，基于16份实际方案系统梳理 |
