@@ -1,0 +1,351 @@
+{
+  "version": "1.0",
+  "updated": "2026-02-24",
+  "description": "章节标题 → 标准10章 映射规则库。基于16份南网施工方案560个标题变体分析构建。",
+  "source": "K19 知识工程产出",
+  "chapters": {
+    "Ch1": {
+      "standard_name": "一、编制依据",
+      "required": true,
+      "rules": [
+        {
+          "type": "exact",
+          "keywords": ["编制依据"],
+          "priority": 1,
+          "evidence": "9/16 文档精确命中"
+        },
+        {
+          "type": "variant",
+          "keywords": ["编制说明", "编制目的", "编写依据"],
+          "priority": 2,
+          "evidence": "3/16 文档使用变体"
+        },
+        {
+          "type": "regex",
+          "patterns": ["第[一二三四五六七八九十]+章\\s*编制依据", "第[一二三四五六七八九十]+章\\s*编制说明"],
+          "priority": 2,
+          "evidence": "DOC 12/15 使用'第X章'格式"
+        }
+      ],
+      "exclusions": ["编制单位", "编制人", "编制:", "编制："],
+      "sub_section_indicators": ["法律法规", "行业标准", "设计文件", "合同", "规程规范"]
+    },
+    "Ch2": {
+      "standard_name": "二、工程概况",
+      "required": true,
+      "rules": [
+        {
+          "type": "exact",
+          "keywords": ["工程概况"],
+          "priority": 1,
+          "evidence": "11/16 文档精确命中"
+        },
+        {
+          "type": "variant",
+          "keywords": ["工程概述", "工程简介", "项目概况", "工程地质"],
+          "priority": 2,
+          "evidence": "命名变体"
+        },
+        {
+          "type": "regex",
+          "patterns": ["第[一二三四五六七八九十]+章\\s*工程概"],
+          "priority": 2,
+          "evidence": "DOC 12/15 使用'第X章'格式"
+        }
+      ],
+      "exclusions": [],
+      "sub_section_indicators": ["工程简介", "工程规模", "地质", "参建单位", "气候", "地貌"]
+    },
+    "Ch3": {
+      "standard_name": "三、施工组织机构及职责",
+      "required": true,
+      "rules": [
+        {
+          "type": "exact",
+          "keywords": ["施工组织机构", "组织机构"],
+          "priority": 1,
+          "evidence": "多文档命中"
+        },
+        {
+          "type": "variant",
+          "keywords": [
+            "项目组织", "管理组织", "岗位职责", "管理人员",
+            "管理机构", "施工管理及作业人员配备", "安健环施工管理组织机构"
+          ],
+          "priority": 2,
+          "evidence": "DOC 11/12/16 使用变体"
+        },
+        {
+          "type": "regex",
+          "patterns": ["第[一二三四五六七八九十]+章\\s*施工管理及"],
+          "priority": 2,
+          "evidence": "DOC 11/12"
+        }
+      ],
+      "exclusions": ["质检部：", "其它成员："],
+      "sub_section_indicators": ["项目经理", "总工", "安全员", "质量员", "职责", "职责划分"]
+    },
+    "Ch4": {
+      "standard_name": "四、施工安排与进度计划",
+      "required": true,
+      "rules": [
+        {
+          "type": "exact",
+          "keywords": ["施工安排", "进度计划"],
+          "priority": 1,
+          "evidence": "标准名称"
+        },
+        {
+          "type": "variant",
+          "keywords": [
+            "施工计划", "施工工期", "工期规划",
+            "施工组织及", "施工工期计划", "工期计划"
+          ],
+          "priority": 2,
+          "evidence": "DOC 1/2/15"
+        }
+      ],
+      "exclusions": [],
+      "sub_section_indicators": ["工期", "进度", "里程碑", "关键节点", "总体部署"]
+    },
+    "Ch5": {
+      "standard_name": "五、施工准备",
+      "required": true,
+      "rules": [
+        {
+          "type": "exact",
+          "keywords": ["施工准备"],
+          "priority": 1,
+          "evidence": "3/16 文档"
+        },
+        {
+          "type": "variant",
+          "keywords": [
+            "准备工作", "资源配置", "劳动力",
+            "设备计划", "材料供应", "技术准备",
+            "人力资源"
+          ],
+          "priority": 2,
+          "evidence": "DOC 1 等"
+        }
+      ],
+      "exclusions": [],
+      "sub_section_indicators": ["三通一平", "材料", "设备", "劳动力", "技术交底", "机械"]
+    },
+    "Ch6": {
+      "standard_name": "六、施工方法及工艺要求",
+      "required": true,
+      "rules": [
+        {
+          "type": "exact",
+          "keywords": ["施工方法", "施工工艺", "工艺要求"],
+          "priority": 1,
+          "evidence": "多文档"
+        },
+        {
+          "type": "variant",
+          "keywords": [
+            "施工技术", "施工措施", "主要工序",
+            "施工方案概述", "施工工艺技术", "施工技术措施",
+            "基础施工", "安装施工", "工艺流程"
+          ],
+          "priority": 2,
+          "evidence": "DOC 1/4/6/7/10/11/12/15"
+        },
+        {
+          "type": "regex",
+          "patterns": [
+            "第[一二三四五六七八九十]+章\\s*(施工工艺|灌注桩|基础施工)",
+            "第[一二三四五六七八九十]+章\\s*施工$",
+            "第[一二三四五六七八九十]+章\\s*复测及"
+          ],
+          "priority": 2,
+          "evidence": "DOC 12/15"
+        }
+      ],
+      "exclusions": [],
+      "sub_section_indicators": [
+        "混凝土", "钢筋", "浇筑", "吊装", "强夯",
+        "喷涂", "焊接", "开挖", "回填", "安装"
+      ]
+    },
+    "Ch7": {
+      "standard_name": "七、质量管理与控制措施",
+      "required": true,
+      "rules": [
+        {
+          "type": "exact",
+          "keywords": ["质量管理", "质量控制"],
+          "priority": 1,
+          "evidence": "标准名称"
+        },
+        {
+          "type": "variant",
+          "keywords": [
+            "质量工艺", "质量保证", "质量检验",
+            "质量通病", "成品保护", "验收标准",
+            "施工质量控制"
+          ],
+          "priority": 2,
+          "evidence": "5/16 文档"
+        },
+        {
+          "type": "regex",
+          "patterns": [
+            "第[一二三四五六七八九十]+章\\s*验收",
+            "第[一二三四五六七八九十]+章\\s*质量"
+          ],
+          "priority": 2,
+          "evidence": "DOC 11/12/15"
+        }
+      ],
+      "exclusions": [],
+      "sub_section_indicators": ["检验", "验收", "合格率", "质量保证体系", "质量通病"]
+    },
+    "Ch8": {
+      "standard_name": "八、安全文明施工管理",
+      "required": true,
+      "rules": [
+        {
+          "type": "exact",
+          "keywords": ["安全管理", "安全措施", "安全技术", "安全文明施工"],
+          "priority": 1,
+          "evidence": "4/16 文档 + 标准名称"
+        },
+        {
+          "type": "variant",
+          "keywords": [
+            "安全文明", "文明施工", "危险源",
+            "安健环", "安全风险", "安全组织",
+            "现场安全", "临时用电", "安全用电",
+            "安全检查", "监测监控", "安全生产",
+            "安全管理制度"
+          ],
+          "priority": 2,
+          "evidence": "多文档"
+        },
+        {
+          "type": "regex",
+          "patterns": [
+            "第[一二三四五六七八九十]+章\\s*(安全|施工保证)",
+            "第[一二三四五六七八九十]+章\\s*安全文明"
+          ],
+          "priority": 2,
+          "evidence": "DOC 11/12/15"
+        }
+      ],
+      "exclusions": [],
+      "sub_section_indicators": [
+        "安全带", "防护栏", "安全网", "监护", "危险源",
+        "高处作业", "有限空间", "交叉作业"
+      ]
+    },
+    "Ch9": {
+      "standard_name": "九、应急预案与处置措施",
+      "required": true,
+      "rules": [
+        {
+          "type": "exact",
+          "keywords": ["应急预案", "应急处置"],
+          "priority": 1,
+          "evidence": "4/16 文档"
+        },
+        {
+          "type": "variant",
+          "keywords": [
+            "应急措施", "应急响应",
+            "应急救援工作程序", "应急物资准备",
+            "事故处置", "事故应急"
+          ],
+          "priority": 2,
+          "evidence": "DOC 10/11"
+        },
+        {
+          "type": "regex",
+          "patterns": ["第[一二三四五六七八九十]+章\\s*应急"],
+          "priority": 2,
+          "evidence": "DOC 11/12/15"
+        }
+      ],
+      "exclusions": [],
+      "sub_section_indicators": [
+        "触电", "坍塌", "火灾", "高处坠落", "中毒",
+        "物体打击", "应急演练"
+      ]
+    },
+    "Ch10": {
+      "standard_name": "十、绿色施工与环境保护",
+      "required": false,
+      "rules": [
+        {
+          "type": "exact",
+          "keywords": ["绿色施工", "环境保护"],
+          "priority": 1,
+          "evidence": "3/16 文档"
+        },
+        {
+          "type": "variant",
+          "keywords": [
+            "环保措施", "水土保护", "季节性施工",
+            "环境因素", "绿色施工目标", "四节一环保",
+            "绿色施工技术", "环境因素分析",
+            "环境、水土保护"
+          ],
+          "priority": 2,
+          "evidence": "DOC 5 为专题"
+        }
+      ],
+      "exclusions": [],
+      "sub_section_indicators": [
+        "节水", "节材", "节地", "扬尘", "噪音",
+        "废弃物", "水土保持"
+      ]
+    }
+  },
+  "global_exclusions": {
+    "cover_patterns": [
+      "广东电网",
+      "有限公司",
+      "500kV",
+      "新建工程",
+      "kV.*变电站",
+      "kV.*线路工程",
+      "施工方案$",
+      "施工组织设计$"
+    ],
+    "admin_patterns": [
+      "目录",
+      "报审表",
+      "报验表"
+    ],
+    "signature_patterns": [
+      "质检部：",
+      "其它成员：",
+      "编制：",
+      "审核：",
+      "批准："
+    ]
+  },
+  "title_cleaning": {
+    "strip_prefixes": [
+      "第[一二三四五六七八九十百千]+章\\s*",
+      "^[一二三四五六七八九十]+、\\s*",
+      "^\\d+(?:\\.\\d+)*\\s+",
+      "^\\(\\d+\\)\\s*",
+      "^[①②③④⑤⑥⑦⑧⑨⑩]\\s*"
+    ],
+    "description": "匹配标题前的编号前缀，清理后再做关键词匹配"
+  },
+  "statistics": {
+    "total_sections_tested": 1217,
+    "admin_filtered": 37,
+    "l1_exact_hits": 190,
+    "l2_variant_hits": 147,
+    "direct_match_total": 337,
+    "inherited_subsections": 871,
+    "truly_unmapped": 9,
+    "coverage_with_inheritance": "99.3%",
+    "test_date": "2026-02-24",
+    "note": "880个未直接命中的标题中，871个通过子章节继承映射，仅9个真正未映射（封面残留）"
+  }
+}

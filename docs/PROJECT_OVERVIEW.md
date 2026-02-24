@@ -146,7 +146,8 @@
 | 线路塔基工艺参考 | `ref_line_tower_struct.md` | — | ✅ |
 | 特殊/通用作业参考 | `ref_special_general.md` | 有限空间、雨季防台等 | ✅ |
 | **结构化规范数据库** | `compliance_standards/standards_database.json` | JSON 84 条，42 条已校验（K18 ✅） | ✅ |
-| **第六章分类模板** | — | 按工程类型的施工方法模板（基础/安装/建筑/涂装） | 🔲 |
+| **第六章分类模板** | `writing_guides/ch06_templates/` | 4 大类 235 条片段（K17 ✅） | ✅ |
+| **章节标题映射规则** | `chapter_mapping/mapping_rules.json` | 10 章 × 三级规则 + 排除规则（K19 ✅） | ✅ |
 
 ---
 
@@ -227,13 +228,13 @@ data/{n}.pdf → MonkeyOCR → output/{n}/raw.md
 | K16 | 知识提取执行 | 16 份文档按策略切分 → 标注 → 过滤 → `fragments.jsonl`（692 条） | ✅ |
 | K17 | 第六章分工程类型模板 | 4 大类（土建/电气/塔基/特殊）× 结构化子章节模板，含完整输出示例 | ✅ |
 | K18 | 规范标准结构化数据库 | JSON 格式 84 条，42 条已校验，含版本/状态/替代关系/工程类型映射 | ✅ |
-| K19 | 章节标题映射规则 | 关键词匹配 + 语义兜底，支持审核系统 | 🔲 |
+| K19 | 章节标题映射规则 | JSON 规则库 + ChapterMapper（三级回退 + 排除规则），113 个测试通过 | ✅ |
 | K20 | 嵌入模型评估 | bge-m3 vs text2vec 等，施工方案领域语义检索评测 | 🔲 |
 | K21 | 实体/关系抽取 | 工序→设备、工序→危险源、危险源→安全措施 | 🔲 |
 | K22 | 知识图谱构建 | LightRAG 入库，实体 ≥50、关系 ≥100 | 🔲 |
 | K23 | 向量库构建 | 8 个 Collection + 嵌入索引 | 🔲 |
 
-**知识工程完成度**：18/23（78%）— 分析设计完成，知识提取、模板构建与标准数据库完成。
+**知识工程完成度**：19/23（83%）— 分析设计完成，知识提取、模板构建、标准数据库与映射规则完成。
 
 ### 5.2 软件实现进度
 
@@ -260,7 +261,7 @@ data/{n}.pdf → MonkeyOCR → output/{n}/raw.md
 | S12 | 9 个章节 Agent | `agents/chapter1~9` | 🔲 |
 | S13 | 生成编排 | `GenerationCoordinator` | 🔲 |
 | S14 | 验证 + 修复 | `Validators`, `Fixer` | 🔲 |
-| S15 | 章节映射器 | `ChapterMapper` | 🔲 |
+| S15 | 章节映射器 | `ChapterMapper` | ⚠️ 基础版完成（K19），LLM 兜底待补 |
 | S16 | 完整性检查 | `CompletenessChecker` | 🔲 |
 | S17 | 时效性检查 | `TimelinessChecker` | 🔲 |
 | S18 | 合规性检查 | `ComplianceChecker` | 🔲 |

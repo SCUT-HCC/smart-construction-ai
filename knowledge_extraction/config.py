@@ -1,5 +1,7 @@
 """知识提取配置 — 映射规则、文档评级、LLM 参数等集中管理。"""
 
+import json
+from pathlib import Path
 from typing import Dict, List
 
 # ── 文档处理范围 ──────────────────────────────────────────────
@@ -45,57 +47,55 @@ STANDARD_CHAPTERS: Dict[str, str] = {
     "Ch10": "十、绿色施工与环境保护",
 }
 
-# ── 章节映射规则（精确关键词 + 变体关键词）─────────────────────
-# 每个 key 为标准章节 ID，value 为两个列表：[精确关键词, 变体关键词]
-# 匹配优先级：精确 > 变体。匹配逻辑为"标题包含该关键词"。
-CHAPTER_MAPPING: Dict[str, Dict[str, List[str]]] = {
-    "Ch1": {
-        "exact": ["编制依据"],
-        "variant": ["编制说明", "编制目的", "编写依据"],
-    },
-    "Ch2": {
-        "exact": ["工程概况"],
-        "variant": ["工程概述", "工程简介", "项目概况", "工程地质"],
-    },
-    "Ch3": {
-        "exact": ["施工组织机构", "组织机构"],
-        "variant": ["项目组织", "管理组织", "岗位职责", "管理人员", "管理机构"],
-    },
-    "Ch4": {
-        "exact": ["施工安排", "进度计划"],
-        "variant": ["施工计划", "施工工期", "工期规划", "施工组织及"],
-    },
-    "Ch5": {
-        "exact": ["施工准备"],
-        "variant": ["准备工作", "资源配置", "劳动力", "设备计划", "材料供应"],
-    },
-    "Ch6": {
-        "exact": ["施工方法", "施工工艺", "工艺要求"],
-        "variant": [
-            "施工技术", "施工措施", "主要工序", "施工方案概述",
-            "施工工艺技术", "施工技术措施", "基础施工", "安装施工",
-        ],
-    },
-    "Ch7": {
-        "exact": ["质量管理", "质量控制"],
-        "variant": ["质量工艺", "质量保证", "质量检验", "质量通病", "成品保护"],
-    },
-    "Ch8": {
-        "exact": ["安全管理", "安全措施", "安全技术"],
-        "variant": [
-            "安全文明", "文明施工", "危险源", "安健环", "安全风险",
-            "安全组织", "现场安全", "临时用电", "安全用电",
-        ],
-    },
-    "Ch9": {
-        "exact": ["应急预案", "应急处置"],
-        "variant": ["应急措施", "应急响应"],
-    },
-    "Ch10": {
-        "exact": ["绿色施工", "环境保护"],
-        "variant": ["环保措施", "水土保护", "季节性施工", "环境因素"],
-    },
+# ── 章节映射规则（从 JSON 规则库加载）──────────────────────────
+# 数据源: docs/knowledge_base/chapter_mapping/mapping_rules.json (K19)
+# 向后兼容: 保持 CHAPTER_MAPPING 变量名和 {ch_id: {"exact": [...], "variant": [...]}} 结构
+
+_MAPPING_RULES_PATH = Path(__file__).resolve().parent.parent / "docs" / "knowledge_base" / "chapter_mapping" / "mapping_rules.json"
+
+
+def _load_chapter_mapping() -> Dict[str, Dict[str, List[str]]]:
+    """从 JSON 规则库加载映射规则，转换为 ChapterSplitter 兼容格式。
+
+    Returns:
+        {ch_id: {"exact": [...], "variant": [...]}} 格式的映射字典
+    """
+    if not _MAPPING_RULES_PATH.exists():
+        # 回退到内联规则（兼容 JSON 文件不存在的场景）
+        return _FALLBACK_CHAPTER_MAPPING
+
+    with open(_MAPPING_RULES_PATH, encoding="utf-8") as f:
+        data = json.load(f)
+
+    result: Dict[str, Dict[str, List[str]]] = {}
+    for ch_id, ch_data in data["chapters"].items():
+        exact: List[str] = []
+        variant: List[str] = []
+        for rule in ch_data["rules"]:
+            if rule["type"] == "exact":
+                exact.extend(rule["keywords"])
+            elif rule["type"] == "variant":
+                variant.extend(rule["keywords"])
+            # regex 类型由 ChapterMapper 处理，ChapterSplitter 不使用
+        result[ch_id] = {"exact": exact, "variant": variant}
+    return result
+
+
+# 内联回退规则（当 JSON 文件不存在时使用）
+_FALLBACK_CHAPTER_MAPPING: Dict[str, Dict[str, List[str]]] = {
+    "Ch1": {"exact": ["编制依据"], "variant": ["编制说明", "编制目的", "编写依据"]},
+    "Ch2": {"exact": ["工程概况"], "variant": ["工程概述", "工程简介", "项目概况", "工程地质"]},
+    "Ch3": {"exact": ["施工组织机构", "组织机构"], "variant": ["项目组织", "管理组织", "岗位职责", "管理人员", "管理机构"]},
+    "Ch4": {"exact": ["施工安排", "进度计划"], "variant": ["施工计划", "施工工期", "工期规划", "施工组织及"]},
+    "Ch5": {"exact": ["施工准备"], "variant": ["准备工作", "资源配置", "劳动力", "设备计划", "材料供应"]},
+    "Ch6": {"exact": ["施工方法", "施工工艺", "工艺要求"], "variant": ["施工技术", "施工措施", "主要工序", "施工方案概述", "施工工艺技术", "施工技术措施", "基础施工", "安装施工"]},
+    "Ch7": {"exact": ["质量管理", "质量控制"], "variant": ["质量工艺", "质量保证", "质量检验", "质量通病", "成品保护"]},
+    "Ch8": {"exact": ["安全管理", "安全措施", "安全技术"], "variant": ["安全文明", "文明施工", "危险源", "安健环", "安全风险", "安全组织", "现场安全", "临时用电", "安全用电"]},
+    "Ch9": {"exact": ["应急预案", "应急处置"], "variant": ["应急措施", "应急响应"]},
+    "Ch10": {"exact": ["绿色施工", "环境保护"], "variant": ["环保措施", "水土保护", "季节性施工", "环境因素"]},
 }
+
+CHAPTER_MAPPING: Dict[str, Dict[str, List[str]]] = _load_chapter_mapping()
 
 # ── 行政内容过滤关键词 ────────────────────────────────────────
 ADMIN_KEYWORDS: List[str] = [
