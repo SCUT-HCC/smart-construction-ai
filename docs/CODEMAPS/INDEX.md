@@ -1,17 +1,15 @@
-<!-- Generated: 2026-02-25 | Files scanned: 27 Python modules + 84 standards + eval scripts | Token estimate: ~2500 -->
+<!-- Generated: 2026-02-25 | Files scanned: 52 Python modules | Token estimate: ~1200 -->
 
 # 代码地图索引 - 南网施工方案智能辅助系统
 
 ## 项目概览
 
-**南网施工方案智能辅助系统** (smart-construction-ai) 是一个 MVP 级别的 Python 应用，实现 PDF 到 Markdown 的完整清洗管道、知识提取管道，以及向量检索模型评测框架。
+**南网施工方案智能辅助系统** (smart-construction-ai) — MVP 级 Python 应用，实现 PDF 清洗、知识提取、实体关系抽取、向量库+知识图谱构建、统一检索接口。
 
-- **技术栈**: Python 3.10 + LangChain + LangGraph（多智能体系统）
-- **核心功能**: OCR → 清洗 → 知识提取 → 向量检索评测（qmd + sqlite-vec）
-- **项目周期**: 2026-01 至 2026-12（中期检查 2026-06-30）
+- **技术栈**: Python 3.11 + qmd + LightRAG + LangChain/LangGraph（待集成）
 - **Conda 环境**: `sca`
-- **测试框架**: pytest + pytest-cov
-- **当前阶段**: Phase 2b（向量检索评测完成 K20；Phase 3 qmd 集成待进行）
+- **测试**: pytest 422 passed
+- **当前阶段**: Phase 2 完成（知识库构建 + 统一检索）→ Phase 3（生成 demo）
 
 ---
 
@@ -19,82 +17,63 @@
 
 ### 1. architecture.md - 系统架构
 
-**内容**: 高层系统设计与模块边界
-
 ```
 ├─ 项目类型: 单体应用 MVP
-├─ 数据流 1: PDF → OCR → Regex → LLM → Verify → Markdown（Phase 1）
-├─ 数据流 2: Markdown → 章节分割 → 密度评估 → 精炼 → 去重 → fragments.jsonl（Phase 2）
-├─ 模块边界: 入口层 → 核心处理层 → 知识提取层 → 基础设施层
-├─ 外部服务: MonkeyOCR (OCR), DeepSeek LLM, Docker
-└─ 未来扩展: qmd + sqlite-vec, LightRAG, LangGraph
+├─ 数据流 1: PDF → OCR → 清洗 → Markdown
+├─ 数据流 2: Markdown → 知识提取 → 692 条片段
+├─ 数据流 3: 片段 → 实体/关系抽取 → 2019 实体 + 1452 关系
+├─ 数据流 4: 片段/实体 → 向量库(8 Collection) + 知识图谱(1977 节点)
+├─ 数据流 5: 统一检索 → KG 规范 + 向量案例 → 融合排序
+└─ 外部服务: MonkeyOCR, DeepSeek LLM, Qwen3 嵌入/Reranker
 ```
-
----
 
 ### 2. backend.md - 后端处理流程
 
-**内容**: 代码级别的调用链、类接口、配置管理、错误处理
-
 ```
-├─ PDF 清洗链路: main.py → processor.py → [crawler.py, cleaning.py, verifier.py]
-├─ 知识提取链路: knowledge_extraction/__main__.py → pipeline.py → [splitter, annotator, evaluator, refiner, deduplicator]
-├─ 关键类:
-│  ├─ PDFProcessor: PDF 处理协调器
-│  ├─ Pipeline: 知识提取 6 步管道
-│  ├─ ChapterSplitter: 章节分割与标准化映射
-│  ├─ DensityEvaluator: LLM 知识密度评估
-│  └─ Deduplicator: 跨文档 Jaccard 去重
-├─ 配置中心: config.py + knowledge_extraction/config.py
-└─ 日志系统: utils/logger_system.py (log_msg, log_json)
+├─ 管道 1: PDF 清洗 (main.py → processor → OCR/Regex/LLM → verifier)
+├─ 管道 2: 知识提取 (pipeline → split/annotate/evaluate/refine/dedup)
+├─ 管道 3: 实体抽取 (pipeline → rule/llm/normalize)
+├─ 管道 4: 向量库 (indexer → qmd → VectorRetriever)
+├─ 管道 5: 知识图谱 (converter → builder → KGRetriever)
+├─ 管道 6: 统一检索 (KnowledgeRetriever → 双引擎融合)
+├─ 审核入口: ChapterMapper（三级回退映射）
+└─ 测试: 10 文件, 4246 行, 422 tests passed
 ```
-
----
 
 ### 3. data.md - 数据结构与存储
 
-**内容**: 文件系统结构、数据转换流、质量指标、知识片段格式
-
 ```
-├─ 输入数据: data/ (16份PDF, 178MB)
-├─ 清洗输出: output/N/ (raw.md → regex.md → final.md)
-├─ 知识片段: output/fragments.jsonl (692 条结构化片段)
-├─ 标准模板: templates/ (GB/T 50502 10章节)
-├─ 质量指标: 字数保留率 ≥50%, 表格完整性 100%, 幻觉率 0%
-└─ 未来: qmd + sqlite-vec (向量库), LightRAG (知识图谱)
+├─ 文件系统: PDF → Markdown → fragments.jsonl → entities/relations
+├─ 向量库: qmd.db (8 Collection, 706 文档, Qwen3-0.6B 1024 维)
+├─ 知识图谱: LightRAG (1977 节点 + 1206 边)
+├─ 标准模板: GB/T 50502 (10 章节)
+├─ 规范数据库: 84 条结构化标准
+└─ 评测数据: 100 组, E2E MRR@3=0.8683
 ```
 
----
-
-### 4. dependencies.md - 外部依赖与集成
-
-**内容**: 包依赖、外部服务集成、风险评估、健康检查
+### 4. dependencies.md - 外部依赖
 
 ```
-├─ Python 包: openai, requests, tqdm, python-dotenv, pydantic, PyYAML
-├─ 外部服务:
-│  ├─ MonkeyOCR API (PDF → Markdown)
-│  ├─ DeepSeek LLM API (语义清洗 + 密度评估 + 内容精炼)
-│  └─ Docker (OCR 容器)
-├─ 环境变量: SCA_LLM_API_KEY, SCA_LLM_BASE_URL, SCA_LLM_MODEL
-└─ 风险评估: 服务宕机, API 限流, Key 泄露, 网络不稳定
+├─ 核心包: openai, qmd, lightrag, networkx, sentence-transformers
+├─ 外部 API: MonkeyOCR (OCR), DeepSeek (LLM)
+├─ 本地模型: Qwen3-Embedding-0.6B + Qwen3-Reranker-0.6B (2.3GB)
+└─ 环境: SCA_LLM_API_KEY, SCA_LLM_BASE_URL, SCA_LLM_MODEL
 ```
 
 ---
 
 ## 快速查询表
 
-| 问题 | 参考文档 | 相关章节 |
-|------|---------|---------|
-| 系统整体架构是什么？ | architecture.md | 模块边界 |
-| 如何添加新的清洗步骤？ | backend.md | 清洗引擎 |
-| 知识提取管道怎么运作？ | backend.md | 知识提取链路 |
-| 输出数据在哪里？ | data.md | 输出数据 |
-| fragments.jsonl 格式是什么？ | data.md | 知识片段 |
-| 规范标准数据库怎么查询？ | data.md | 规范标准数据库 |
-| 如何配置 API Key？ | dependencies.md | 环境变量配置 |
-| 章节标准化映射规则？ | backend.md | ChapterSplitter |
-| 密度评估的判定标准？ | backend.md | DensityEvaluator |
+| 问题 | 文档 |
+|------|------|
+| 系统整体架构？ | architecture.md |
+| 某个管道怎么工作？ | backend.md |
+| 数据在哪里？什么格式？ | data.md |
+| 外部依赖和配置？ | dependencies.md |
+| 向量检索怎么用？ | backend.md → 管道 4/6 |
+| 知识图谱怎么推理？ | backend.md → 管道 5/6 |
+| 统一检索接口？ | backend.md → 管道 6 |
+| 章节映射规则？ | backend.md → 审核系统 |
 
 ---
 
@@ -102,85 +81,105 @@
 
 ```
 smart-construction-ai/
-├── docs/CODEMAPS/
-│   ├── INDEX.md (本文件) - 导航与索引
-│   ├── architecture.md - 系统架构 (~750 tokens)
-│   ├── backend.md - 后端流程 (~950 tokens)
-│   ├── data.md - 数据结构 (~600 tokens)
-│   └── dependencies.md - 外部依赖 (~500 tokens)
-├── 核心清洗管道（Phase 1）
-│   ├── main.py - 入口与参数解析 (50 行)
-│   ├── processor.py - PDF 处理协调器 (90 行)
-│   ├── crawler.py - OCR 客户端 (69 行)
-│   ├── cleaning.py - 清洗引擎 (434 行)
-│   └── verifier.py - 质量验证 (67 行)
-├── 知识提取管道（Phase 2）
-│   ├── knowledge_extraction/__main__.py (5 行)
-│   ├── knowledge_extraction/pipeline.py (308 行)
-│   ├── knowledge_extraction/chapter_splitter.py (253 行)
-│   ├── knowledge_extraction/metadata_annotator.py (113 行)
-│   ├── knowledge_extraction/density_evaluator.py (205 行)
-│   ├── knowledge_extraction/content_refiner.py (174 行)
-│   ├── knowledge_extraction/deduplicator.py (163 行)
-│   └── knowledge_extraction/config.py (176 行)
-├── 向量检索评测（Phase 2b - K20）
-│   ├── scripts/eval_embedding_models.py - 嵌入模型评测
-│   ├── scripts/eval_reranker_models.py - Reranker 评测
-│   ├── scripts/eval_combined_pipeline.py - E2E 联合管道
-│   ├── scripts/verify_qmd_integration.py - qmd 集成验证
-│   └── eval/embedding/results/ - 评测报告 + 模型指标
+├── docs/CODEMAPS/                           # 代码地图（本目录）
+│
+├── 核心清洗管道 (Phase 1, 710 行)
+│   ├── main.py (50)          - 入口
+│   ├── processor.py (90)     - 处理协调器
+│   ├── crawler.py (69)       - OCR 客户端
+│   ├── cleaning.py (434)     - 正则 + LLM 清洗
+│   └── verifier.py (67)      - 质量验证
+│
+├── 知识提取管道 (Phase 2, 1397 行)
+│   └── knowledge_extraction/
+│       ├── pipeline.py (308)              - 6 步管道
+│       ├── chapter_splitter.py (253)      - 章节分割
+│       ├── density_evaluator.py (205)     - 密度评估
+│       ├── content_refiner.py (174)       - 内容精炼
+│       ├── deduplicator.py (163)          - 去重
+│       ├── metadata_annotator.py (113)    - 元数据标注
+│       └── config.py (176)               - 配置
+│
+├── 实体/关系抽取 (Phase 2, 1891 行)
+│   └── entity_extraction/
+│       ├── pipeline.py (356)       - 双路抽取管道
+│       ├── rule_extractor.py (577) - 规则抽取
+│       ├── llm_extractor.py (345)  - LLM 抽取
+│       ├── normalizer.py (307)     - 归一化
+│       ├── config.py (155)         - 配置
+│       └── schema.py (145)         - 实体/关系 Schema
+│
+├── 向量库 (Phase 2, 566 行)
+│   └── vector_store/
+│       ├── indexer.py (252)        - 索引器
+│       ├── retriever.py (241)      - VectorRetriever
+│       └── config.py (62)          - Collection/模型配置
+│
+├── 知识图谱 (Phase 2, 824 行)
+│   └── knowledge_graph/
+│       ├── retriever.py (296)      - KGRetriever
+│       ├── converter.py (256)      - K21→LightRAG 格式转换
+│       ├── builder.py (217)        - LightRAG 构建
+│       └── config.py (43)          - 配置
+│
+├── 统一检索 (S10, 432 行)
+│   └── knowledge_retriever/
+│       ├── retriever.py (330)      - KnowledgeRetriever 主类
+│       ├── models.py (65)          - RetrievalItem + RetrievalResponse
+│       └── config.py (32)          - 融合策略参数
+│
+├── 审核系统 (Phase 4 预备, 426 行)
+│   └── review/
+│       └── chapter_mapper.py (425) - 章节标题映射（三级回退）
+│
 ├── 基础设施
-│   ├── config.py (45 行) + utils/logger_system.py (48 行)
-│   ├── tests/ - pytest fixtures + 测试 (~1000 行)
-│   ├── templates/ - GB/T 50502 标准 10 章节
-│   ├── data/ - 16份原始 PDF
-│   └── output/ - fragments.jsonl (692 条) + 清洗后 MD
-├── 知识库资料（docs/knowledge_base/ + docs/analysis/）
-│   ├── writing_guides/ - Ch1-10 撰写指南
-│   ├── ch06_templates/ - 4 大工程类型模板（K17）
-│   ├── compliance_standards/ - 结构化标准 JSON（K18）
-│   ├── process_references/ - 工艺参考库
-│   └── 其他资源 (organization, quality, safety, emergency)
-├── requirements.txt - Python 依赖
-└── .env - 环境变量（SCA_LLM_API_KEY 等）
+│   ├── config.py (45)              - 全局配置
+│   └── utils/logger_system.py (48) - 日志系统
+│
+├── 测试 (4246 行, 422 tests)
+│   └── tests/ (10 个测试文件)
+│
+├── 评测脚本 (Phase 2b)
+│   └── scripts/ (4 个评测脚本)
+│
+├── 数据与知识库
+│   ├── data/ (16 份 PDF)
+│   ├── output/ (清洗产物 + fragments)
+│   ├── templates/ (GB/T 50502)
+│   └── docs/knowledge_base/ (向量库 + 知识图谱 + 标准)
+│
+└── requirements.txt + .env
 ```
 
 ---
 
-## 核心组件职责一览
+## 核心组件一览
 
-### 生产代码 — PDF 清洗管道
+### 生产代码（6349 行, 42 文件）
 
-| 组件 | 行数 | 职责 | 主要方法 |
-|------|------|------|---------|
-| **main.py** | 50 | 入口与参数解析 | `parse_args()`, `main()` |
-| **processor.py** | 90 | 处理流程协调 | `process_file()`, `process_directory()` |
-| **crawler.py** | 69 | OCR API 调用 | `MonkeyOCRClient.to_markdown()` |
-| **cleaning.py** | 434 | 正则 + LLM 清洗 | `RegexCleaning.clean()`, `LLMCleaning.clean()` |
-| **verifier.py** | 67 | 质量验证 | `MarkdownVerifier.verify()` |
-| **config.py** | 45 | 全局配置 | `LLM_CONFIG`, `CLEANING_CONFIG` 等 |
-| **logger_system.py** | 48 | 日志与追踪 | `log_msg()`, `log_json()` |
+| 模块 | 行数 | 核心类/函数 |
+|------|------|------------|
+| PDF 清洗 | 710 | PDFProcessor, RegexCleaning, LLMCleaning |
+| 知识提取 | 1397 | Pipeline, ChapterSplitter, DensityEvaluator |
+| 实体抽取 | 1891 | RuleExtractor, LLMExtractor, Normalizer |
+| 向量库 | 566 | VectorRetriever.search(), build_vector_store() |
+| 知识图谱 | 824 | KGRetriever.infer_process_chain(), convert_k21_to_lightrag() |
+| 统一检索 | 432 | KnowledgeRetriever.retrieve(), _merge_and_sort() |
+| 审核 | 426 | ChapterMapper.map() |
+| 基础设施 | 93 | log_msg(), LLM_CONFIG |
 
-### 生产代码 — 知识提取管道
+### 测试代码（4246 行, 10 文件, 422 tests）
 
-| 组件 | 行数 | 职责 | 主要方法 |
-|------|------|------|---------|
-| **pipeline.py** | 308 | 6 步管道编排 | `Pipeline.run()` |
-| **chapter_splitter.py** | 253 | 章节分割与标准映射 | `ChapterSplitter.split()`, `_map_chapter()` |
-| **metadata_annotator.py** | 113 | 元数据标注 | `MetadataAnnotator.annotate()` |
-| **density_evaluator.py** | 205 | LLM 密度评估 | `DensityEvaluator.evaluate()` |
-| **content_refiner.py** | 174 | LLM 内容精炼 | `ContentRefiner.refine()` |
-| **deduplicator.py** | 163 | 跨文档去重 | `Deduplicator.deduplicate()` |
-| **ke/config.py** | 176 | 知识提取配置 | 章节映射、质量评分、工程类型 |
-
-### 测试代码
-
-| 组件 | 行数 | 覆盖目标 |
-|------|------|---------|
-| **conftest.py** | 66 | 共享 fixtures |
-| **test_cleaning.py** | 369 | RegexCleaning + LLMCleaning |
-| **test_verifier.py** | 145 | MarkdownVerifier |
-| **test_knowledge_extraction.py** | 368 | 知识提取管道各模块 |
+| 测试文件 | 行数 | 覆盖模块 |
+|----------|------|---------|
+| test_entity_extraction.py | 878 | K21 实体抽取 |
+| test_knowledge_retriever.py | 709 | S10 统一检索 (100%) |
+| test_knowledge_graph.py | 699 | K22 知识图谱 |
+| test_vector_store.py | 510 | K23 向量库 |
+| test_chapter_mapper.py | 502 | K19 章节映射 |
+| test_cleaning.py | 369 | 清洗引擎 |
+| test_knowledge_extraction.py | 368 | K16 知识提取 |
+| test_verifier.py | 145 | 质量验证 |
 
 ---
 
@@ -188,19 +187,18 @@ smart-construction-ai/
 
 | 日期 | Task | 变更 |
 |------|------|------|
-| 2026-02-25 | K20 | 向量检索评测完成：Qwen3-0.6B Embedding + Qwen3-0.6B Reranker 选定，E2E MRR@3=0.8683 |
-| 2026-02-25 | K20 | 新增 4 个评测脚本：嵌入模型 / Reranker / 联合管道 / qmd 集成验证 |
-| 2026-02-25 | K20 | 评测数据：eval/embedding/ 包含 100 组测试数据 + 6 个模型的对标结果 |
-| 2026-02-24 | K18 | 完成规范标准结构化数据库（84 条 JSON，42 条已校验，8 组替代关系） |
-| 2026-02-24 | K17 | 完成第六章分工程类型模板（4 大类 235 条片段） |
-| 2026-02-24 | K16 | 完成知识提取管道，产出 692 条结构化知识片段 |
+| 2026-02-25 | S10 | 统一检索接口 KnowledgeRetriever（双引擎融合，60 测试，100% 覆盖） |
+| 2026-02-25 | K23 | 向量库构建（8 Collection，706 文档，BM25+向量混合检索） |
+| 2026-02-25 | K22 | LightRAG 知识图谱（1977 节点 + 1206 边，图遍历推理） |
+| 2026-02-25 | K21 | 实体/关系抽取（双路抽取，2019 实体 + 1452 关系） |
+| 2026-02-25 | K20 | 嵌入模型评测（Qwen3-0.6B 选型，E2E MRR@3=0.8683） |
+| 2026-02-25 | K19 | 章节标题映射规则库 + ChapterMapper（三级回退） |
 
 ---
 
 ## 代码地图生成信息
 
 - **生成时间**: 2026-02-25
-- **扫描文件**: 27 个 Python 模块（核心 7 + 知识提取 7 + 评测 4 + 测试 4 + 配置 + utils）
-- **总代码行数**: ~3200 行（~2200 生产 + ~1000 测试）
-- **最后更新**: 2026-02-25（与代码同步，K20 完成）
-- **重大变更**: 新增 4 个评测脚本（embedding/reranker/combined/qmd-verify）；完成向量检索模型选型（Qwen3 系列）
+- **扫描文件**: 52 个 Python 模块（42 生产 + 10 测试）
+- **总代码行数**: ~10,600 行（~6,350 生产 + ~4,250 测试）
+- **最后更新**: 2026-02-25（S10 统一检索接口完成）

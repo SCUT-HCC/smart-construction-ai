@@ -19,7 +19,7 @@ from knowledge_graph.converter import (
     convert_k21_to_lightrag,
 )
 from knowledge_graph.builder import _fallback_embedding, create_rag_instance
-from knowledge_graph.retriever import KnowledgeRetriever, ProcessRequirements
+from knowledge_graph.retriever import KGRetriever, ProcessRequirements
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -575,24 +575,24 @@ class TestProcessRequirements:
 
 
 # ═══════════════════════════════════════════════════════════════
-# retriever.py — KnowledgeRetriever 图遍历测试
+# retriever.py — KGRetriever 图遍历测试
 # ═══════════════════════════════════════════════════════════════
 
 
-class TestKnowledgeRetriever:
+class TestKGRetriever:
     """测试知识图谱推理器的图遍历功能。"""
 
     @pytest.fixture
-    def retriever(self, sample_graph: nx.Graph) -> KnowledgeRetriever:
+    def retriever(self, sample_graph: nx.Graph) -> KGRetriever:
         """创建带测试图的推理器。"""
         rag = MagicMock()
         storage = MagicMock()
         storage._graph = sample_graph
         rag.chunk_entity_relation_graph = storage
 
-        return KnowledgeRetriever(rag)
+        return KGRetriever(rag)
 
-    def test_get_neighbors_all(self, retriever: KnowledgeRetriever) -> None:
+    def test_get_neighbors_all(self, retriever: KGRetriever) -> None:
         """获取所有邻居。"""
         neighbors = retriever.get_neighbors("钢筋绑扎")
         assert len(neighbors) == 3
@@ -600,18 +600,18 @@ class TestKnowledgeRetriever:
         assert "高处坠落" in neighbors
         assert "钢筋间距检查" in neighbors
 
-    def test_get_neighbors_filtered(self, retriever: KnowledgeRetriever) -> None:
+    def test_get_neighbors_filtered(self, retriever: KGRetriever) -> None:
         """按关系类型过滤邻居。"""
         neighbors = retriever.get_neighbors("钢筋绑扎", relation_type="设备")
         assert "塔吊" in neighbors
         assert "高处坠落" not in neighbors
 
-    def test_get_neighbors_not_found(self, retriever: KnowledgeRetriever) -> None:
+    def test_get_neighbors_not_found(self, retriever: KGRetriever) -> None:
         """不存在的实体返回空。"""
         neighbors = retriever.get_neighbors("不存在的工序")
         assert neighbors == []
 
-    def test_infer_process_chain(self, retriever: KnowledgeRetriever) -> None:
+    def test_infer_process_chain(self, retriever: KGRetriever) -> None:
         """推理工序完整要求链。"""
         result = retriever.infer_process_chain("钢筋绑扎")
         assert result.process_name == "钢筋绑扎"
@@ -620,54 +620,54 @@ class TestKnowledgeRetriever:
         assert "佩戴安全带" in result.safety_measures.get("高处坠落", [])
         assert "钢筋间距检查" in result.quality_points
 
-    def test_infer_process_chain_not_found(self, retriever: KnowledgeRetriever) -> None:
+    def test_infer_process_chain_not_found(self, retriever: KGRetriever) -> None:
         """不存在的工序返回空结果。"""
         result = retriever.infer_process_chain("不存在的工序")
         assert result.equipment == []
         assert result.hazards == []
         assert result.quality_points == []
 
-    def test_infer_hazard_measures(self, retriever: KnowledgeRetriever) -> None:
+    def test_infer_hazard_measures(self, retriever: KGRetriever) -> None:
         """推理危险源安全措施。"""
         measures = retriever.infer_hazard_measures("高处坠落")
         assert "佩戴安全带" in measures
 
     def test_infer_hazard_measures_not_found(
-        self, retriever: KnowledgeRetriever
+        self, retriever: KGRetriever
     ) -> None:
         """不存在的危险源返回空。"""
         measures = retriever.infer_hazard_measures("不存在的危险源")
         assert measures == []
 
-    def test_get_all_entities(self, retriever: KnowledgeRetriever) -> None:
+    def test_get_all_entities(self, retriever: KGRetriever) -> None:
         """获取全部实体。"""
         entities = retriever.get_all_entities()
         assert len(entities) == 5
         names = {e["name"] for e in entities}
         assert "钢筋绑扎" in names
 
-    def test_get_all_entities_filtered(self, retriever: KnowledgeRetriever) -> None:
+    def test_get_all_entities_filtered(self, retriever: KGRetriever) -> None:
         """按类型过滤实体。"""
         entities = retriever.get_all_entities(entity_type="hazard")
         assert len(entities) == 1
         assert entities[0]["name"] == "高处坠落"
 
-    def test_get_all_entities_empty_type(self, retriever: KnowledgeRetriever) -> None:
+    def test_get_all_entities_empty_type(self, retriever: KGRetriever) -> None:
         """不存在的类型返回空。"""
         entities = retriever.get_all_entities(entity_type="nonexistent")
         assert entities == []
 
-    def test_get_graph_stats(self, retriever: KnowledgeRetriever) -> None:
+    def test_get_graph_stats(self, retriever: KGRetriever) -> None:
         """图谱统计信息。"""
         stats = retriever.get_graph_stats()
         assert stats["nodes"] == 5
         assert stats["edges"] == 4
 
-    def test_find_node_exists(self, retriever: KnowledgeRetriever) -> None:
+    def test_find_node_exists(self, retriever: KGRetriever) -> None:
         """存在的节点直接返回。"""
         assert retriever._find_node("钢筋绑扎") == "钢筋绑扎"
 
-    def test_find_node_not_exists(self, retriever: KnowledgeRetriever) -> None:
+    def test_find_node_not_exists(self, retriever: KGRetriever) -> None:
         """不存在的节点返回 None。"""
         assert retriever._find_node("不存在") is None
 
@@ -677,14 +677,14 @@ class TestKnowledgeRetriever:
 # ═══════════════════════════════════════════════════════════════
 
 
-class TestKnowledgeRetrieverNoGraph:
+class TestKGRetrieverNoGraph:
     """测试无图或空图时的降级行为。"""
 
     def test_no_graph_attribute(self) -> None:
         """storage 无 _graph 属性时创建空图。"""
         rag = MagicMock()
         rag.chunk_entity_relation_graph = MagicMock(spec=[])
-        retriever = KnowledgeRetriever(rag)
+        retriever = KGRetriever(rag)
         assert retriever.get_graph_stats() == {"nodes": 0, "edges": 0}
 
     def test_empty_graph(self) -> None:
@@ -694,6 +694,6 @@ class TestKnowledgeRetrieverNoGraph:
         storage._graph = nx.Graph()
         rag.chunk_entity_relation_graph = storage
 
-        retriever = KnowledgeRetriever(rag)
+        retriever = KGRetriever(rag)
         assert retriever.get_neighbors("任意") == []
         assert retriever.get_all_entities() == []

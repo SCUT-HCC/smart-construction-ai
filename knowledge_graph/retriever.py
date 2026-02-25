@@ -51,7 +51,7 @@ class ProcessRequirements:
 # ---------------------------------------------------------------------------
 
 
-class KnowledgeRetriever:
+class KGRetriever:
     """知识图谱推理器，封装 LightRAG 实例。
 
     提供图遍历推理（快速、结构化）和 LLM 查询（自然语言）两种接口。
@@ -67,14 +67,14 @@ class KnowledgeRetriever:
     @classmethod
     async def from_storage(
         cls, working_dir: Path | None = None
-    ) -> "KnowledgeRetriever":
+    ) -> "KGRetriever":
         """从已持久化的 LightRAG 存储加载。
 
         Args:
             working_dir: LightRAG 工作目录
 
         Returns:
-            KnowledgeRetriever 实例
+            KGRetriever 实例
         """
         working_dir = working_dir or LIGHTRAG_WORKING_DIR
         rag = create_rag_instance(working_dir)
@@ -82,14 +82,14 @@ class KnowledgeRetriever:
         return cls(rag)
 
     @classmethod
-    def from_storage_sync(cls, working_dir: Path | None = None) -> "KnowledgeRetriever":
+    def from_storage_sync(cls, working_dir: Path | None = None) -> "KGRetriever":
         """同步版本的 from_storage。
 
         Args:
             working_dir: LightRAG 工作目录
 
         Returns:
-            KnowledgeRetriever 实例
+            KGRetriever 实例
         """
         return asyncio.run(cls.from_storage(working_dir))
 

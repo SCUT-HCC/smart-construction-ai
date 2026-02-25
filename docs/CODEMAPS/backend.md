@@ -1,270 +1,149 @@
-<!-- Generated: 2026-02-25 | Files scanned: 27 modules + eval scripts | Token estimate: ~1000 -->
+<!-- Generated: 2026-02-25 | Files scanned: 42 production modules | Token estimate: ~950 -->
 
-# 后端处理流程 - PDF 清洗 + 知识提取 + 向量检索评测
+# 后端处理流程
 
 ## 管道总览
 
 ```
-管道 1 (Phase 1): main.py → PDFProcessor → [OCR → Regex → LLM] → Verifier → output/N/final.md
-管道 2 (Phase 2): __main__.py → Pipeline.run() → [Split → Annotate → Evaluate → Refine → Dedup] → fragments.jsonl
+管道 1 (Phase 1): main.py → PDFProcessor → [OCR → Regex → LLM] → Verifier → final.md
+管道 2 (Phase 2): knowledge_extraction → Pipeline.run() → [Split→Annotate→Evaluate→Refine→Dedup] → fragments.jsonl
+管道 3 (Phase 2): entity_extraction → Pipeline.run() → [Rule→LLM→Normalize] → entities.json + relations.json
+管道 4 (Phase 2): vector_store → build_vector_store() → 8 Collection qmd.db → VectorRetriever.search()
+管道 5 (Phase 2): knowledge_graph → build → LightRAG → KGRetriever.infer_process_chain()
+管道 6 (S10):     knowledge_retriever → KnowledgeRetriever.retrieve() → 融合双引擎 → RetrievalResponse
 ```
 
 ---
 
-## 管道 1: PDF 清洗
-
-### 1. 入口调度（main.py:50）
+## 管道 1: PDF 清洗（Phase 1）
 
 ```python
-parse_args() → 解析 --input, --output
-main() → 初始化组件链 → 触发处理
+main.py:parse_args() → processor.py:PDFProcessor.process_file()
+├─ crawler.py:MonkeyOCRClient.to_markdown()     # POST /parse → ZIP → .md
+├─ cleaning.py:RegexCleaning.clean()             # 6 条正则
+├─ cleaning.py:LLMCleaning.clean()               # DeepSeek API, chunk_size=2000
+└─ verifier.py:MarkdownVerifier.verify()         # 字数保留率≥50%, 幻觉检测
 ```
 
-**依赖注入**:
-```python
-components = {
-    'ocr_client': MonkeyOCRClient(base_url, timeout),
-    'regex_cleaner': RegexCleaning(patterns),
-    'llm_cleaner': LLMCleaning(api_key, base_url, model, temperature),
-    'verifier': MarkdownVerifier(min_ratio, forbidden_phrases),
-}
-processor = PDFProcessor(**components)
-```
-
-### 2. 处理器（processor.py:90）
+## 管道 2: 知识提取（Phase 2 - K16）
 
 ```python
-PDFProcessor.process_file(pdf_path, output_dir)
-├─ OCR → 保存 raw.md → 正则 → 保存 regex.md → LLM → 保存 final.md → 验证
-PDFProcessor.process_directory(input_dir, output_dir)
-└─ 批量调用 process_file()（tqdm 进度条）
+knowledge_extraction/__main__.py → Pipeline.run()
+├─ ChapterSplitter.split()         # 正则匹配标题 → 标准 10 章节
+├─ MetadataAnnotator.annotate()    # 添加 source_doc, chapter, tags
+├─ DensityEvaluator.evaluate()     # 并行 LLM (max_workers=4), high/medium/low
+├─ ContentRefiner.refine()         # 仅精炼 medium 密度
+├─ Deduplicator.deduplicate()      # 按章节 Jaccard>0.8 去重
+└─ 序列化 → fragments.jsonl (692 条)
 ```
 
-### 3. OCR 客户端（crawler.py:69）
+## 管道 3: 实体/关系抽取（Phase 2 - K21）
 
 ```python
-MonkeyOCRClient.to_markdown(pdf_path: str) -> str
-├─ POST /parse (multipart/form-data) → download_url
-└─ GET /download_url → ZIP → 解析 .md
+entity_extraction/__main__.py → Pipeline.run()
+├─ RuleExtractor.extract()        # 正则规则抽取 (577 行)
+├─ LLMExtractor.extract()         # LLM 结构化抽取 (345 行)
+├─ Normalizer.normalize()         # 实体归一化、去重、合并 (307 行)
+└─ 输出 entities.json (2019) + relations.json (1452)
 ```
 
-### 4. 清洗引擎（cleaning.py:434）
+**Schema** (entity_extraction/schema.py:145):
+- 实体类型: process, equipment, hazard, safety_measure, quality_point
+- 关系类型: requires_equipment, produces_hazard, mitigated_by, requires_quality_check
+
+## 管道 4: 向量库构建（Phase 2 - K23）
 
 ```python
-RegexCleaning.clean(content: str) -> str
-├─ 6 条正则: LaTeX 序号、行末空格、企业名、批复符、孤立页码
-└─ 压缩多余空行（3+ → 2）
+vector_store/__main__.py → build_vector_store()
+├─ indexer.py:_load_fragments()              # 加载 fragments.jsonl
+├─ indexer.py:_index_fragments()             # 按 CHAPTER_TO_COLLECTION 分配
+├─ indexer.py:_index_extra_sources()         # ch06_templates + writing_guides
+└─ SentenceTransformerBackend.embed()        # Qwen3-Embedding-0.6B, 1024 维
 
-LLMCleaning.clean(content: str) -> str
-├─ split_into_paragraphs() → 按段落分块（chunk_size=2000）
-├─ process_chunk() → DeepSeek API（temperature=0.1, max_tokens=4096）
-└─ SYSTEM_PROMPT: 禁对话前缀、标题合并、段落连贯、LaTeX→Unicode
+retriever.py:VectorRetriever
+├─ .search(query, collection, engineering_type) → list[RetrievalResult]
+├─ .search_multi_collection(query, collections) → dict[str, list]
+└─ .get_collection_stats() → dict[str, int]
 ```
 
-### 5. 质量验证（verifier.py:67）
+**8 Collections**: ch01_basis, ch06_methods, ch07_quality, ch08_safety, ch09_emergency, ch10_green, equipment, templates
+
+## 管道 5: 知识图谱构建（Phase 2 - K22）
 
 ```python
-MarkdownVerifier.verify(original, cleaned) -> Dict[str, bool]
-├─ check_length() → 字数保留率 ≥ 50%
-├─ check_hallucination() → 检测 LLM 对话性前缀
-└─ check_structure() → 表格管道符数量检测
+knowledge_graph/__main__.py → build
+├─ converter.py:convert_k21_to_lightrag()    # K21 → LightRAG 格式
+├─ builder.py:create_rag_instance()          # 初始化 LightRAG
+└─ builder.py:import + initialize_storages() # 导入实体/关系/chunks
+
+retriever.py:KGRetriever
+├─ .infer_process_chain(process) → ProcessRequirements   # 图遍历，毫秒级
+├─ .infer_hazard_measures(hazard) → list[str]
+├─ .get_neighbors(entity, relation_type) → list[str]
+├─ .aquery(question, mode) → str                         # LLM 查询，秒级
+└─ .get_all_entities(entity_type) → list[dict]
 ```
 
----
-
-## 管道 2: 知识提取
-
-### 入口（knowledge_extraction/__main__.py:5）
-
-```bash
-python -u -m knowledge_extraction
-```
-
-### 6 步管道编排（pipeline.py:308）
+## 管道 6: 统一检索（S10）
 
 ```python
-Pipeline.run() → 6 步顺序执行:
-│
-├─ Step 1: ChapterSplitter.split(doc_path) → List[Section]
-│  └─ 正则匹配 Markdown 标题 → 映射到标准 10 章节
-│
-├─ Step 2: MetadataAnnotator.annotate(sections) → List[Section]
-│  └─ 添加 source_doc, chapter, engineering_type, tags
-│
-├─ Step 3: DensityEvaluator.evaluate(sections) → List[Section]
-│  └─ 并行 LLM 调用（max_workers=4），评估 high/medium/low
-│
-├─ Step 4: ContentRefiner.refine(sections) → List[Section]
-│  └─ 仅精炼 medium 密度片段，LLM 摘要简化
-│
-├─ Step 5: Deduplicator.deduplicate(sections) → List[Section]
-│  └─ 按章节分组 → Jaccard 相似度 > 0.8 → 保留最高质量
-│
-└─ Step 6: 过滤 + 序列化 → output/fragments.jsonl
-   └─ 仅保留 high + medium 密度片段（692 条）
+knowledge_retriever/retriever.py:KnowledgeRetriever
+├─ .retrieve(query, chapter, engineering_type, processes) → RetrievalResponse
+│   ├─ _chapter_needs_kg(chapter)           # ch07/ch08/ch09 需要 KG
+│   ├─ retrieve_regulations(processes)      # KG → RetrievalItem (priority=1)
+│   ├─ retrieve_cases(query, chapter)       # Vector → RetrievalItem (priority=2/3)
+│   └─ _merge_and_sort(items)              # priority ASC, score DESC
+├─ .retrieve_regulations(processes) → list[RetrievalItem]
+├─ .retrieve_cases(query, chapter) → list[RetrievalItem]
+├─ .infer_rules(context, processes) → list[RetrievalItem]
+└─ .close()
 ```
 
-### 章节分割器（chapter_splitter.py:253）
+**融合优先级**: KG 规范(1) > 向量案例(2) > 模板(3) > LLM 自由生成(4)
+
+## 审核系统入口（K19）
 
 ```python
-ChapterSplitter.split(doc_path: str) -> List[Section]
-├─ _extract_sections() → 正则解析 Markdown 标题层级
-├─ _map_chapter(title) → 匹配标准 10 章节（精确 + 变体关键词）
-└─ _is_admin_content(title) → 过滤行政性内容（审批页、签章等）
-```
-
-**标准章节映射** (knowledge_extraction/config.py):
-```
-Ch1 编制依据 ← "编制依据", "编制说明", "依据"
-Ch2 工程概况 ← "工程概况", "项目概况", "工程简介"
-... (10 章节，每章 2-5 个变体关键词)
-```
-
-### 密度评估器（density_evaluator.py:205）
-
-```python
-DensityEvaluator.evaluate(sections) -> List[Section]
-├─ ThreadPoolExecutor(max_workers=4) → 并行 LLM 调用
-├─ 每片段独立评估 → 返回 {"density": "high|medium|low", "reason": "..."}
-└─ 评估标准: 技术具体性、数据丰富度、可复用性
-```
-
-### 去重器（deduplicator.py:163）
-
-```python
-Deduplicator.deduplicate(sections) -> List[Section]
-├─ 按 chapter 分组
-├─ _dedup_group() → 两两 Jaccard 比较
-│  └─ 相似度 > 0.8 → 保留 quality_score 更高的
-└─ 合并所有分组结果
+review/chapter_mapper.py:ChapterMapper
+├─ .map(title) → ChapterID          # 三级回退：精确→关键词→模糊
+└─ 113 测试通过
 ```
 
 ---
 
 ## 配置中心
 
-### 全局配置（config.py:45）
+| 配置文件 | 关键参数 |
+|----------|---------|
+| `config.py` (45) | LLM_CONFIG, MONKEY_OCR_CONFIG, CLEANING_CONFIG |
+| `knowledge_extraction/config.py` (176) | CHAPTER_MAPPING, DOC_QUALITY, DEDUP_THRESHOLD |
+| `entity_extraction/config.py` (155) | 实体类型定义, 规则模式, LLM prompt |
+| `vector_store/config.py` (62) | CHAPTER_TO_COLLECTION, EMBEDDING_MODEL, TOP_K |
+| `knowledge_graph/config.py` (43) | LIGHTRAG_WORKING_DIR, RELATION_KEYWORDS |
+| `knowledge_retriever/config.py` (32) | PRIORITY_*, CHAPTERS_NEED_KG |
 
-| 配置块 | 关键参数 |
-|--------|---------|
-| `LLM_CONFIG` | api_key, base_url, model, temperature=0.1, max_tokens=4096, chunk_size=2000 |
-| `MONKEY_OCR_CONFIG` | base_url=localhost:7861, timeout=120s |
-| `CLEANING_CONFIG` | 6 条正则模式 |
-| `VERIFY_CONFIG` | min_length_ratio=0.5, forbidden_phrases |
-
-### 知识提取配置（knowledge_extraction/config.py:176）
-
-| 配置块 | 关键参数 |
-|--------|---------|
-| `DOCS_TO_PROCESS` | [1..16] 文档列表 |
-| `DOC_QUALITY` | 每文档质量评分 1-3 |
-| `STANDARD_CHAPTERS` | Ch1-Ch10 标准章节定义 |
-| `CHAPTER_MAPPING` | 精确 + 变体关键词映射 |
-| `LLM_MAX_WORKERS` | 并发 API 调用数（默认 4） |
-| `DEDUP_THRESHOLD` | Jaccard 阈值 0.8 |
-
----
-
-## 日志系统（utils/logger_system.py:48）
+## 日志系统
 
 ```python
-log_msg(level: str, msg: str)   # INFO/WARNING/ERROR，ERROR 自动抛异常
-log_json(data: dict, filename)  # 追加到 task_log.json，自动加 timestamp
+utils/logger_system.py:log_msg(level, msg)   # INFO/WARNING/ERROR，ERROR 自动抛异常
+utils/logger_system.py:log_json(data, file)   # 追加 JSON + timestamp
 ```
-
-## 错误处理策略
-
-| 场景 | 处理 | 结果 |
-|------|------|------|
-| OCR 失败 | 返回空字符串 | 跳过该文件 → WARNING |
-| LLM API 超时 | 抛出异常 | 文件标记失败 → WARNING |
-| 验证失败 | 记录 WARNING | 不阻断（已生成 final.md） |
-| 密度评估异常 | 标记为 low | 该片段被过滤 |
-| 章节映射失败 | 归入 "未分类" | 保留但不参与去重分组 |
-
----
-
-## 管道 3: 向量检索评测（Phase 2b - K20）
-
-### 评测框架概览
-
-```
-fragments.jsonl (692 条)
-    ↓
-┌─────────────────────────────────────────────────┐
-│ 评测数据集：eval_dataset.jsonl (100 组查询)     │
-└─────────────────────────────────────────────────┘
-    ↓
-┌─────────────────────────────────────────────────┐
-│ Step 1: eval_embedding_models.py                │
-│ - 加载 6 个嵌入模型（BGE/Qwen3）               │
-│ - 计算 MRR@3, Hit@1, Hit@3, Hit@10             │
-│ - 按章节/文本长度分层分析                      │
-│ - 输出：result_*.json 含 metrics + 测速 + 显存  │
-└─────────────────────────────────────────────────┘
-    ↓
-┌─────────────────────────────────────────────────┐
-│ Step 2: eval_reranker_models.py                 │
-│ - 基于嵌入模型的 top-10 结果                   │
-│ - 测试 3 个 Reranker（BGE / Qwen3-0.6B/4B）  │
-│ - 计算 rerank 后的 MRR@3 / Hit@k              │
-│ - 输出：reranker_*.json 含改进度 + 显存        │
-└─────────────────────────────────────────────────┘
-    ↓
-┌─────────────────────────────────────────────────┐
-│ Step 3: eval_combined_pipeline.py               │
-│ - 组合 top-2 Embedding × top-2 Reranker       │
-│ - E2E 评测：MRR@3, 端到端延迟, 双模型显存    │
-│ - 部署可行性检查（显存 < 10GB）               │
-│ - 输出：combined_*.json (4 个组合结果)         │
-└─────────────────────────────────────────────────┘
-    ↓
-┌─────────────────────────────────────────────────┐
-│ 选型结果（K20）                                │
-│ 嵌入: Qwen3-Embedding-0.6B (MRR@3=0.8600)    │
-│ Reranker: Qwen3-Reranker-0.6B (MRR@3=0.8683) │
-│ E2E: MRR@3=0.8683, Hit@1=82%, Hit@3=92%      │
-│ 显存: 2.3GB（部署可行）                       │
-└─────────────────────────────────────────────────┘
-    ↓
-┌─────────────────────────────────────────────────┐
-│ Step 4: verify_qmd_integration.py               │
-│ - 验证 Qwen3 模型与 qmd + sqlite-vec 兼容     │
-│ - 验证 embedding 维度（1024）                 │
-│ - 验证 E2E: index → embed → search → rerank   │
-│ - 验证双模型同时加载显存                       │
-└─────────────────────────────────────────────────┘
-```
-
-### 评测脚本详解
-
-| 脚本 | 用途 | 输入 | 输出 | 命令 |
-|------|------|------|------|------|
-| `eval_embedding_models.py` | 嵌入模型对标 | fragments.jsonl, eval_dataset.jsonl | result_*.json | `python scripts/eval_embedding_models.py --fragments ... --eval-dataset ... --output ...` |
-| `eval_reranker_models.py` | Reranker 对标 | embedding results (top-10) | reranker_*.json | `python scripts/eval_reranker_models.py --embedding-results ... --eval-dataset ...` |
-| `eval_combined_pipeline.py` | E2E 联合评测 | 嵌入+reranker 组合 | combined_*.json | `python scripts/eval_combined_pipeline.py --fragments ... --eval-dataset ...` |
-| `verify_qmd_integration.py` | qmd 集成验证 | 选定模型路径 | 兼容性报告 | `python scripts/verify_qmd_integration.py --fragments ...` |
 
 ---
 
 ## 测试框架
 
 ```
-tests/
-├── conftest.py (66 行) - 共享 fixtures
-├── test_cleaning.py (369 行) - RegexCleaning + LLMCleaning
-├── test_verifier.py (145 行) - MarkdownVerifier
-└── test_knowledge_extraction.py (368 行) - 知识提取管道各模块
+tests/ (10 文件, 4246 行)
+├── conftest.py (66)                    - 共享 fixtures
+├── test_cleaning.py (369)              - RegexCleaning + LLMCleaning
+├── test_verifier.py (145)              - MarkdownVerifier
+├── test_knowledge_extraction.py (368)  - 知识提取管道
+├── test_entity_extraction.py (878)     - 实体/关系抽取（K21）
+├── test_chapter_mapper.py (502)        - 章节映射（K19）
+├── test_vector_store.py (510)          - 向量库（K23）
+├── test_knowledge_graph.py (699)       - 知识图谱（K22）
+└── test_knowledge_retriever.py (709)   - 统一检索（S10）
 ```
 
-运行命令:
-```bash
-# 单元测试
-conda run -n sca pytest tests/ -v
-
-# 覆盖率报告
-conda run -n sca pytest tests/ --cov=. --cov-report=term-missing
-
-# 评测脚本
-conda run -n sca python scripts/eval_embedding_models.py --eval-dataset eval/embedding/eval_dataset.jsonl --fragments docs/knowledge_base/fragments/fragments.jsonl --output eval/embedding/results/
-```
+运行: `conda run -n sca pytest tests/ -v` → 422 passed
