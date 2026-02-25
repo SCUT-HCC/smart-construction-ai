@@ -38,7 +38,10 @@
 
 ### 嵌入策略
 
-- **模型**：待定（bge-m3 / text2vec-large-chinese / 其他中文模型）。评估维度：中文语义理解能力、向量维度（影响 sqlite-vec 存储与检索速度）、推理速度（需支持本地部署）、与 qmd 的兼容性
+- **嵌入模型**：Qwen3-Embedding-0.6B（K20 评测选定，MRR@3=0.8600，显存 1146MB，维度 1024）
+- **Reranker**：Qwen3-Reranker-0.6B（Rerank MRR@3=0.8683，CausalLM 架构，组合显存 2.3GB）
+- **E2E 效果**：MRR@3=0.8683，Hit@1=82%，Hit@3=92%，端到端延迟 169ms
+- **备选高精度组合**：Qwen3-Reranker-4B（E2E MRR@3=0.8933，组合显存 8.9GB，延迟 355ms）
 - **chunk_size**：按知识提取策略中定义的粒度（子章节级），不做固定长度切分
 - **overlap**：0（子章节已是独立语义单元）
 

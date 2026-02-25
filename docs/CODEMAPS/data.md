@@ -1,4 +1,4 @@
-<!-- Generated: 2026-02-24 | Files scanned: output/, templates/, docs/ | Token estimate: ~650 -->
+<!-- Generated: 2026-02-25 | Files scanned: output/, templates/, docs/, eval/ | Token estimate: ~750 -->
 
 # 数据结构与存储
 
@@ -151,23 +151,73 @@ docs/analysis/
 
 ---
 
+## 评测数据（K20 - Phase 2b）
+
+### 评测数据集
+
+**路径**: `eval/embedding/eval_dataset.jsonl`
+**内容**: 100 组 query-passage 对（原始 chunks）
+
+```json
+{
+  "query": "混凝土强度等级C30如何浇筑？",
+  "passages": [
+    {
+      "id": "ch06_s001",
+      "content": "混凝土浇筑施工工艺：采用商品混凝土，强度等级C30...",
+      "chapter": "Ch6_施工方法及工艺要求"
+    }
+  ],
+  "positive_ids": ["ch06_s001"]
+}
+```
+
+### 评测结果（K20 选型）
+
+**路径**: `eval/embedding/results/`
+
+| 文件 | 内容 | 关键指标 |
+|------|------|---------|
+| `result_qwen3-0.6b.json` | Qwen3-Embedding-0.6B | MRR@3=0.8600, Hit@3=92%, 显存1146MB |
+| `result_qwen3-4b.json` | Qwen3-Embedding-4B | MRR@3=0.8917, Hit@3=94%, 显存10269MB |
+| `reranker_qwen3-reranker-0.6b.json` | Qwen3-Reranker-0.6B | MRR@3改进 +2.8%, 显存1.1GB |
+| `combined_qwen3-0.6b_qwen3-reranker-0.6b.json` | **选型组合** | E2E MRR@3=0.8683, 显存2.3GB ✅ |
+| `embedding_report.md` | 详细分析报告 | 按章节/文本长度分层 |
+| `reranker_report.md` | Reranker 对标 | 性能 vs 显存权衡 |
+| `eval_report.md` | 综合评测总结 | 部署建议 + 成本分析 |
+
+---
+
 ## 未来数据架构（Phase 3-4）
 
 ### 向量数据库（qmd + sqlite-vec）
 
 ```
 collection: construction_plans
-├─ 按章节分库存储 fragments.jsonl 中的片段
-├─ embedding: 1536-dim (OpenAI text-embedding-3-small)
-└─ metadata: {chapter, engineering_type, quality_score}
+├─ ch01_basis: 编制依据引用标准
+├─ ch06_methods: 施工方法与工艺
+├─ ch07_quality: 质量管理措施
+├─ ch08_safety: 安全措施与危险源
+├─ ch09_emergency: 应急处置措施
+├─ ch10_green: 绿色施工
+├─ equipment: 设备参数表
+└─ templates: 通用模板段落
+───────────────────────────────────
+嵌入模型: Qwen3-Embedding-0.6B (1024-dim, K20 选定)
+Reranker: Qwen3-Reranker-0.6B (K20 选定, E2E MRR@3=0.8683)
+top_k: 3 | threshold: 0.6 | 按章节/工程类型过滤
 ```
 
 ### 知识图谱（LightRAG）
 
 ```
-工程实体 → 施工方法 → 规范引用
+工程实体 → 施工工序 → 设备需求
     ↓           ↓            ↓
-工期要求    机械配置     版本时效性
+灌注桩    钻孔/清孔/浇筑    旋转钻机
+
+工序 → 危险源 → 安全措施
+    ↓      ↓         ↓
+浇筑   坍塌   安全围挡+监测
 ```
 
 ---

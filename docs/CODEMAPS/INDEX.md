@@ -1,17 +1,17 @@
-<!-- Generated: 2026-02-24 | Files scanned: 20 Python modules + 84 standards | Token estimate: ~2300 -->
+<!-- Generated: 2026-02-25 | Files scanned: 27 Python modules + 84 standards + eval scripts | Token estimate: ~2500 -->
 
 # 代码地图索引 - 南网施工方案智能辅助系统
 
 ## 项目概览
 
-**南网施工方案智能辅助系统** (smart-construction-ai) 是一个 MVP 级别的 Python 应用，实现 PDF 到 Markdown 的完整清洗管道，并已构建知识提取管道。
+**南网施工方案智能辅助系统** (smart-construction-ai) 是一个 MVP 级别的 Python 应用，实现 PDF 到 Markdown 的完整清洗管道、知识提取管道，以及向量检索模型评测框架。
 
 - **技术栈**: Python 3.10 + LangChain + LangGraph（多智能体系统）
-- **核心功能**: OCR 识别 → 正则清洗 → LLM 语义清洗 → 质量验证 → 知识提取
+- **核心功能**: OCR → 清洗 → 知识提取 → 向量检索评测（qmd + sqlite-vec）
 - **项目周期**: 2026-01 至 2026-12（中期检查 2026-06-30）
 - **Conda 环境**: `sca`
 - **测试框架**: pytest + pytest-cov
-- **当前阶段**: Phase 2（知识库构建）
+- **当前阶段**: Phase 2b（向量检索评测完成 K20；Phase 3 qmd 集成待进行）
 
 ---
 
@@ -104,42 +104,45 @@
 smart-construction-ai/
 ├── docs/CODEMAPS/
 │   ├── INDEX.md (本文件) - 导航与索引
-│   ├── architecture.md - 系统架构 (~700 tokens)
-│   ├── backend.md - 后端流程 (~900 tokens)
-│   ├── data.md - 数据结构 (~500 tokens)
-│   └── dependencies.md - 外部依赖 (~450 tokens)
-├── main.py - 入口与参数解析 (50 行)
-├── processor.py - PDF 处理协调器 (90 行)
-├── crawler.py - OCR 客户端 (69 行)
-├── cleaning.py - 清洗引擎 (434 行)
-├── verifier.py - 质量验证 (67 行)
-├── config.py - 全局配置 (45 行)
-├── utils/
-│   ├── __init__.py
-│   └── logger_system.py - 日志系统 (48 行)
-├── knowledge_extraction/
-│   ├── __init__.py
-│   ├── __main__.py - 模块入口 (5 行)
-│   ├── pipeline.py - 6 步管道编排器 (308 行)
-│   ├── chapter_splitter.py - 章节分割与映射 (253 行)
-│   ├── metadata_annotator.py - 元数据标注 (113 行)
-│   ├── density_evaluator.py - LLM 密度评估 (205 行)
-│   ├── content_refiner.py - LLM 内容精炼 (174 行)
-│   ├── deduplicator.py - Jaccard 去重 (163 行)
-│   └── config.py - 知识提取配置 (176 行)
-├── tests/
-│   ├── __init__.py
-│   ├── conftest.py - pytest fixtures (66 行)
-│   ├── test_cleaning.py - 清洗模块测试 (369 行)
-│   ├── test_verifier.py - 验证模块测试 (145 行)
-│   └── test_knowledge_extraction.py - 知识提取测试 (368 行)
-├── templates/ - GB/T 50502 标准模板
-├── data/ - 16份原始 PDF
-├── output/ - 清洗后的 Markdown + fragments.jsonl
-├── docs/analysis/ - 章节分析报告
-├── docs/knowledge_base/ - 知识库资料（撰写指南 + 参考 + Ch6 分类模板）
+│   ├── architecture.md - 系统架构 (~750 tokens)
+│   ├── backend.md - 后端流程 (~950 tokens)
+│   ├── data.md - 数据结构 (~600 tokens)
+│   └── dependencies.md - 外部依赖 (~500 tokens)
+├── 核心清洗管道（Phase 1）
+│   ├── main.py - 入口与参数解析 (50 行)
+│   ├── processor.py - PDF 处理协调器 (90 行)
+│   ├── crawler.py - OCR 客户端 (69 行)
+│   ├── cleaning.py - 清洗引擎 (434 行)
+│   └── verifier.py - 质量验证 (67 行)
+├── 知识提取管道（Phase 2）
+│   ├── knowledge_extraction/__main__.py (5 行)
+│   ├── knowledge_extraction/pipeline.py (308 行)
+│   ├── knowledge_extraction/chapter_splitter.py (253 行)
+│   ├── knowledge_extraction/metadata_annotator.py (113 行)
+│   ├── knowledge_extraction/density_evaluator.py (205 行)
+│   ├── knowledge_extraction/content_refiner.py (174 行)
+│   ├── knowledge_extraction/deduplicator.py (163 行)
+│   └── knowledge_extraction/config.py (176 行)
+├── 向量检索评测（Phase 2b - K20）
+│   ├── scripts/eval_embedding_models.py - 嵌入模型评测
+│   ├── scripts/eval_reranker_models.py - Reranker 评测
+│   ├── scripts/eval_combined_pipeline.py - E2E 联合管道
+│   ├── scripts/verify_qmd_integration.py - qmd 集成验证
+│   └── eval/embedding/results/ - 评测报告 + 模型指标
+├── 基础设施
+│   ├── config.py (45 行) + utils/logger_system.py (48 行)
+│   ├── tests/ - pytest fixtures + 测试 (~1000 行)
+│   ├── templates/ - GB/T 50502 标准 10 章节
+│   ├── data/ - 16份原始 PDF
+│   └── output/ - fragments.jsonl (692 条) + 清洗后 MD
+├── 知识库资料（docs/knowledge_base/ + docs/analysis/）
+│   ├── writing_guides/ - Ch1-10 撰写指南
+│   ├── ch06_templates/ - 4 大工程类型模板（K17）
+│   ├── compliance_standards/ - 结构化标准 JSON（K18）
+│   ├── process_references/ - 工艺参考库
+│   └── 其他资源 (organization, quality, safety, emergency)
 ├── requirements.txt - Python 依赖
-└── .env - 环境变量
+└── .env - 环境变量（SCA_LLM_API_KEY 等）
 ```
 
 ---
@@ -183,22 +186,21 @@ smart-construction-ai/
 
 ## 最近更新
 
-| 日期 | Commit | 变更 |
-|------|--------|------|
-| 2026-02-24 | — | 完成 K18 规范标准结构化数据库（84 条 JSON，42 条已校验，8 组替代关系） |
-| 2026-02-24 | — | 完成 K17 第六章分工程类型模板（4 大类 + 完整输出示例） |
-| 2026-02-24 | 9819fb5 | 完成 K16 知识提取管道，产出 692 条结构化知识片段 |
-| 2026-02-24 | ca2b6e1 | 补齐剩余 7 章撰写指南及配套参考资料 |
-| 2026-02-23 | d27a1f9 | 新建施工方案知识库，基于16份实际方案系统梳理 |
-| 2026-02-23 | 36daa4a | 更新代码地图 — 同步 pytest 测试框架 |
-| 2026-02-23 | 2361b9c | 增强清洗与验证模块，补充单元测试 |
+| 日期 | Task | 变更 |
+|------|------|------|
+| 2026-02-25 | K20 | 向量检索评测完成：Qwen3-0.6B Embedding + Qwen3-0.6B Reranker 选定，E2E MRR@3=0.8683 |
+| 2026-02-25 | K20 | 新增 4 个评测脚本：嵌入模型 / Reranker / 联合管道 / qmd 集成验证 |
+| 2026-02-25 | K20 | 评测数据：eval/embedding/ 包含 100 组测试数据 + 6 个模型的对标结果 |
+| 2026-02-24 | K18 | 完成规范标准结构化数据库（84 条 JSON，42 条已校验，8 组替代关系） |
+| 2026-02-24 | K17 | 完成第六章分工程类型模板（4 大类 235 条片段） |
+| 2026-02-24 | K16 | 完成知识提取管道，产出 692 条结构化知识片段 |
 
 ---
 
 ## 代码地图生成信息
 
-- **生成时间**: 2026-02-24
-- **扫描文件**: 20 个 Python 模块（核心 7 + 知识提取 7 + 测试 4 + 配置 + utils）
-- **总代码行数**: ~2500 行（~1700 生产 + ~950 测试）
-- **最后更新**: 2026-02-24（与代码同步）
-- **重大变更**: 新增 knowledge_extraction/ 模块（7 文件, ~1400 行）；新增 standards_database.json（84 条结构化标准）
+- **生成时间**: 2026-02-25
+- **扫描文件**: 27 个 Python 模块（核心 7 + 知识提取 7 + 评测 4 + 测试 4 + 配置 + utils）
+- **总代码行数**: ~3200 行（~2200 生产 + ~1000 测试）
+- **最后更新**: 2026-02-25（与代码同步，K20 完成）
+- **重大变更**: 新增 4 个评测脚本（embedding/reranker/combined/qmd-verify）；完成向量检索模型选型（Qwen3 系列）

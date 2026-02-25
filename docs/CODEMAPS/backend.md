@@ -1,6 +1,6 @@
-<!-- Generated: 2026-02-24 | Files scanned: 20 modules | Token estimate: ~900 -->
+<!-- Generated: 2026-02-25 | Files scanned: 27 modules + eval scripts | Token estimate: ~1000 -->
 
-# 后端处理流程 - PDF 清洗 + 知识提取
+# 后端处理流程 - PDF 清洗 + 知识提取 + 向量检索评测
 
 ## 管道总览
 
@@ -184,6 +184,69 @@ log_json(data: dict, filename)  # 追加到 task_log.json，自动加 timestamp
 
 ---
 
+## 管道 3: 向量检索评测（Phase 2b - K20）
+
+### 评测框架概览
+
+```
+fragments.jsonl (692 条)
+    ↓
+┌─────────────────────────────────────────────────┐
+│ 评测数据集：eval_dataset.jsonl (100 组查询)     │
+└─────────────────────────────────────────────────┘
+    ↓
+┌─────────────────────────────────────────────────┐
+│ Step 1: eval_embedding_models.py                │
+│ - 加载 6 个嵌入模型（BGE/Qwen3）               │
+│ - 计算 MRR@3, Hit@1, Hit@3, Hit@10             │
+│ - 按章节/文本长度分层分析                      │
+│ - 输出：result_*.json 含 metrics + 测速 + 显存  │
+└─────────────────────────────────────────────────┘
+    ↓
+┌─────────────────────────────────────────────────┐
+│ Step 2: eval_reranker_models.py                 │
+│ - 基于嵌入模型的 top-10 结果                   │
+│ - 测试 3 个 Reranker（BGE / Qwen3-0.6B/4B）  │
+│ - 计算 rerank 后的 MRR@3 / Hit@k              │
+│ - 输出：reranker_*.json 含改进度 + 显存        │
+└─────────────────────────────────────────────────┘
+    ↓
+┌─────────────────────────────────────────────────┐
+│ Step 3: eval_combined_pipeline.py               │
+│ - 组合 top-2 Embedding × top-2 Reranker       │
+│ - E2E 评测：MRR@3, 端到端延迟, 双模型显存    │
+│ - 部署可行性检查（显存 < 10GB）               │
+│ - 输出：combined_*.json (4 个组合结果)         │
+└─────────────────────────────────────────────────┘
+    ↓
+┌─────────────────────────────────────────────────┐
+│ 选型结果（K20）                                │
+│ 嵌入: Qwen3-Embedding-0.6B (MRR@3=0.8600)    │
+│ Reranker: Qwen3-Reranker-0.6B (MRR@3=0.8683) │
+│ E2E: MRR@3=0.8683, Hit@1=82%, Hit@3=92%      │
+│ 显存: 2.3GB（部署可行）                       │
+└─────────────────────────────────────────────────┘
+    ↓
+┌─────────────────────────────────────────────────┐
+│ Step 4: verify_qmd_integration.py               │
+│ - 验证 Qwen3 模型与 qmd + sqlite-vec 兼容     │
+│ - 验证 embedding 维度（1024）                 │
+│ - 验证 E2E: index → embed → search → rerank   │
+│ - 验证双模型同时加载显存                       │
+└─────────────────────────────────────────────────┘
+```
+
+### 评测脚本详解
+
+| 脚本 | 用途 | 输入 | 输出 | 命令 |
+|------|------|------|------|------|
+| `eval_embedding_models.py` | 嵌入模型对标 | fragments.jsonl, eval_dataset.jsonl | result_*.json | `python scripts/eval_embedding_models.py --fragments ... --eval-dataset ... --output ...` |
+| `eval_reranker_models.py` | Reranker 对标 | embedding results (top-10) | reranker_*.json | `python scripts/eval_reranker_models.py --embedding-results ... --eval-dataset ...` |
+| `eval_combined_pipeline.py` | E2E 联合评测 | 嵌入+reranker 组合 | combined_*.json | `python scripts/eval_combined_pipeline.py --fragments ... --eval-dataset ...` |
+| `verify_qmd_integration.py` | qmd 集成验证 | 选定模型路径 | 兼容性报告 | `python scripts/verify_qmd_integration.py --fragments ...` |
+
+---
+
 ## 测试框架
 
 ```
@@ -196,6 +259,12 @@ tests/
 
 运行命令:
 ```bash
+# 单元测试
 conda run -n sca pytest tests/ -v
+
+# 覆盖率报告
 conda run -n sca pytest tests/ --cov=. --cov-report=term-missing
+
+# 评测脚本
+conda run -n sca python scripts/eval_embedding_models.py --eval-dataset eval/embedding/eval_dataset.jsonl --fragments docs/knowledge_base/fragments/fragments.jsonl --output eval/embedding/results/
 ```

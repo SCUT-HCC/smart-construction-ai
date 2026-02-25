@@ -100,7 +100,8 @@
 
 - **融合策略**：`强制规范(LightRAG) > 参考案例(qmd) > 通用模板 > LLM 自由生成`
 - **8 个 Collection**：`ch01_basis`, `ch06_methods`, `ch07_quality`, `ch08_safety`, `ch09_emergency`, `ch10_green`, `equipment`, `templates` — 全部 🔲 未创建
-- **嵌入模型**：bge-m3 / text2vec-large-chinese 待评估选型
+- **嵌入模型**：Qwen3-Embedding-0.6B（K20 评测选定，MRR@3=0.86，1024 维）
+- **Reranker**：Qwen3-Reranker-0.6B（CausalLM 架构，E2E MRR@3=0.8683，组合显存 2.3GB）
 
 ---
 
@@ -229,12 +230,12 @@ data/{n}.pdf → MonkeyOCR → output/{n}/raw.md
 | K17 | 第六章分工程类型模板 | 4 大类（土建/电气/塔基/特殊）× 结构化子章节模板，含完整输出示例 | ✅ |
 | K18 | 规范标准结构化数据库 | JSON 格式 84 条，42 条已校验，含版本/状态/替代关系/工程类型映射 | ✅ |
 | K19 | 章节标题映射规则 | JSON 规则库 + ChapterMapper（三级回退 + 排除规则），113 个测试通过 | ✅ |
-| K20 | 嵌入模型评估 | bge-m3 vs text2vec 等，施工方案领域语义检索评测 | 🔲 |
+| K20 | 嵌入模型评估 | Qwen3-Embedding-0.6B + Qwen3-Reranker-0.6B 选定，E2E MRR@3=0.8683 | ✅ |
 | K21 | 实体/关系抽取 | 工序→设备、工序→危险源、危险源→安全措施 | 🔲 |
 | K22 | 知识图谱构建 | LightRAG 入库，实体 ≥50、关系 ≥100 | 🔲 |
 | K23 | 向量库构建 | 8 个 Collection + 嵌入索引 | 🔲 |
 
-**知识工程完成度**：19/23（83%）— 分析设计完成，知识提取、模板构建、标准数据库与映射规则完成。
+**知识工程完成度**：20/23（87%）— 分析设计完成，知识提取、模板构建、标准数据库、映射规则、嵌入模型选型完成。
 
 ### 5.2 软件实现进度
 

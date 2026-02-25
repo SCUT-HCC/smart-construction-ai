@@ -1,4 +1,4 @@
-<!-- Generated: 2026-02-24 | Files scanned: requirements.txt + config.py + ke/config.py | Token estimate: ~450 -->
+<!-- Generated: 2026-02-25 | Files scanned: requirements.txt + eval scripts + model configs | Token estimate: ~550 -->
 
 # 外部依赖与集成
 
@@ -22,14 +22,23 @@ pytest==9.0.2        # 测试框架
 pytest-cov==7.0.0    # 覆盖率报告
 ```
 
+### 评测依赖（Phase 2b - K20 新增）
+
+```
+torch>=2.0           # PyTorch（模型加载）
+sentence-transformers>=2.5.0  # 嵌入模型框架
+numpy                # 向量操作 + 指标计算
+```
+
 ### 未来依赖（Phase 3+）
 
 ```
-qmd==0.1.0           # 向量数据库（案例语义检索）
+qmd==0.1.0           # 向量数据库（案例语义检索，K20 选定 Qwen3-0.6B）
 sqlite-vec==0.1.6    # SQLite 向量扩展
 langchain            # LangChain 工具链
 langchain-openai     # OpenAI 集成
 langgraph            # 多智能体编排
+lightrag             # 知识图谱推理
 ```
 
 **Conda 环境**: `sca` (Python 3.10)
@@ -109,13 +118,54 @@ SCA_LLM_MODEL="deepseek-chat"
 
 ---
 
+## 向量检索模型配置（K20 选型）
+
+### Embedding 模型
+
+| 模型 | 维度 | MRR@3 | 显存(MB) | Hit@1 | 部署状态 |
+|------|------|-------|----------|-------|---------|
+| Qwen3-Embedding-0.6B | 1024 | 0.8600 | 1146 | 80% | ✅ 生产选定 |
+| Qwen3-Embedding-4B | 2560 | 0.8917 | 10269 | 85% | 高精度备选 |
+| BGE-M3 | 1536 | — | — | — | 评估中 |
+
+### Reranker 模型
+
+| 模型 | 架构 | MRR@3改进 | 显存(MB) | 部署状态 |
+|------|------|----------|----------|---------|
+| Qwen3-Reranker-0.6B | CausalLM | +2.8% | 1100 | ✅ 生产选定 |
+| Qwen3-Reranker-4B | CausalLM | +4.2% | 8200 | 高精度备选 |
+| BGE-Reranker-V2-M3 | CrossEncoder | +1.5% | 2800 | 评估中 |
+
+### E2E 联合管道（选定）
+
+```
+Qwen3-Embedding-0.6B + Qwen3-Reranker-0.6B
+├─ 端到端 MRR@3: 0.8683
+├─ Hit@1: 82% | Hit@3: 92%
+├─ 双模型显存: 2.3GB（部署可行 ✅）
+├─ 端到端延迟: 169ms
+└─ 成本: 3.8GB CPU + RTX 3090 可运行
+```
+
+---
+
 ## 测试验证
 
 ```bash
-# 快速验证（无需 API）
+# 单元测试（无需 API/模型）
 conda run -n sca pytest tests/test_cleaning.py::TestRegexCleaningClean -v
 conda run -n sca pytest tests/test_verifier.py -v
 
 # 完整覆盖率
 conda run -n sca pytest tests/ --cov=. --cov-report=term-missing
+
+# 向量检索评测（需 GPU，耗时 30+ 分钟）
+conda run -n sca python scripts/eval_embedding_models.py \
+    --eval-dataset eval/embedding/eval_dataset.jsonl \
+    --fragments docs/knowledge_base/fragments/fragments.jsonl \
+    --output eval/embedding/results/
+
+# qmd 集成验证（快速，5 分钟）
+conda run -n sca python scripts/verify_qmd_integration.py \
+    --fragments docs/knowledge_base/fragments/fragments.jsonl
 ```

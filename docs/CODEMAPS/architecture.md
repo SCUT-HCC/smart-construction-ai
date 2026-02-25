@@ -1,10 +1,10 @@
-<!-- Generated: 2026-02-24 | Files scanned: 20 | Token estimate: ~750 -->
+<!-- Generated: 2026-02-25 | Files scanned: 27 modules + eval infrastructure | Token estimate: ~850 -->
 
 # 系统架构 - 南网施工方案智能辅助系统
 
 ## 项目类型
 
-单体应用（MVP）- PDF 清洗管道 + 知识提取管道 + 单元测试框架
+单体应用（MVP）- PDF 清洗管道 + 知识提取管道 + 向量检索评测框架 + 单元测试
 
 ## 核心数据流
 
@@ -22,6 +22,16 @@ data/      raw.md     regex.md     final.md       日志系统    output/N/
 final.md → 章节分割 → 元数据标注 → 密度评估 → 内容精炼 → 去重 → fragments.jsonl
    ↓          ↓           ↓           ↓          ↓         ↓        ↓
 output/   Section[]   +metadata   high/med/low  refined   unique   692 条片段
+```
+
+### 数据流 3: 向量检索评测（Phase 2b - K20 完成）
+
+```
+fragments.jsonl → [嵌入 + Reranker 模型评测] → 模型选型 → E2E 指标
+     ↓                    ↓                        ↓         ↓
+eval_dataset.jsonl  eval_embedding_models.py   Qwen3-0.6B  MRR@3=0.8683
+                    eval_reranker_models.py     双模型组  Hit@1=82%
+                    eval_combined_pipeline.py    合    Hit@3=92%
 ```
 
 ## 模块边界
@@ -82,10 +92,18 @@ output/   Section[]   +metadata   high/med/low  refined   unique   692 条片段
 | `docs/knowledge_base/` | 撰写指南 + 参考资料 | 生成系统素材 |
 | `compliance_standards/standards_database.json` | 84 条结构化规范标准 | 时效性检查数据库 |
 
-## 未来扩展（Phase 3-5）
+## 下一阶段（Phase 3-5）
 
-- qmd + sqlite-vec（案例向量检索，按章节分库）
-- LightRAG（知识图谱推理，工序→危险源链）
-- LangGraph（多智能体系统）
-  - 检测 Agent（章节完整性、依据时效性、合规性）
-  - 生成 Agent（信息提取、内容生成、质量校验）
+### Phase 3: qmd 集成（向量检索）
+- **嵌入模型**: Qwen3-Embedding-0.6B（已选型，K20 评测）
+- **Reranker**: Qwen3-Reranker-0.6B（E2E MRR@3=0.8683，显存 2.3GB）
+- **向量库**: qmd + sqlite-vec，按章节分 collection
+- **检索参数**: top_k=3, threshold=0.6, 支持按章节/工程类型过滤
+
+### Phase 4: LightRAG 集成（知识图谱）
+- 工序 → 设备 / 危险源 / 质量要点 / 规范
+- 知识推理：输入工程类型 → 输出安全/质量/设备清单
+
+### Phase 5: LangGraph 多智能体
+- 检测 Agent：章节完整性、依据时效性、合规性
+- 生成 Agent：信息提取、内容生成、质量校验

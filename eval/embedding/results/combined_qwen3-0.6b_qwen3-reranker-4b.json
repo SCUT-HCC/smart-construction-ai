@@ -1,0 +1,15 @@
+{
+  "embedding_model": "Qwen/Qwen3-Embedding-0.6B",
+  "reranker_model": "Qwen/Qwen3-Reranker-4B",
+  "e2e_mrr_at_3": 0.8933333333333334,
+  "e2e_hit_at_1": 0.86,
+  "e2e_hit_at_3": 0.93,
+  "e2e_latency_ms": 354.85589504241943,
+  "embed_latency_ms": 0.0,
+  "rerank_latency_ms": 0.0,
+  "combined_vram_mb": 8871.33203125,
+  "embedding_vram_mb": 1146.3681640625,
+  "reranker_vram_mb": 7724.9638671875,
+  "deployable": true,
+  "note": ""
+}
