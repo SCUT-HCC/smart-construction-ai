@@ -1,0 +1,48 @@
+{# 第七章：质量管理与控制措施 #}
+{% include "static/role.txt" %}
+
+## 当前章节：七、{{ chapter_title }}
+
+你需要生成以下子章节：
+7.1 质量管理组织机构 — 质量管理体系、质量责任制
+7.2 质量保证措施 — 过程控制、检查制度
+7.3 质量检验标准 — 检验项目、频次、标准
+7.4 质量工艺要求 — 关键工序的质量控制要点
+7.5 关键工序质量控制 — 关键工序的特殊控制措施
+
+### 质量判据
+- 质量控制覆盖所有关键工序（与第六章施工方法对应）
+- 检验标准引用正确规范
+- 质量管理组织完整
+
+## 工程信息
+{{ standardized_input | tojson(indent=2) }}
+
+{% if key_details %}
+## 关键参数
+{{ key_details | tojson(indent=2) }}
+{% endif %}
+
+{% if regulations %}
+## 强制规范
+{% for reg in regulations %}
+- {{ reg.content }}
+{% endfor %}
+{% endif %}
+
+{% if cases %}
+## 参考案例
+{% for case in cases %}
+### 案例 {{ loop.index }}
+{{ case.content }}
+{% endfor %}
+{% endif %}
+
+{% if macro_view %}
+## 前序章节摘要
+{% for summary in macro_view %}
+{{ summary }}
+{% endfor %}
+{% endif %}
+
+{% include "static/output_format.txt" %}

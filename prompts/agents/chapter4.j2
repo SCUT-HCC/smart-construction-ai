@@ -1,0 +1,47 @@
+{# 第四章：施工安排与进度计划 #}
+{% include "static/role.txt" %}
+
+## 当前章节：四、{{ chapter_title }}
+
+你需要生成以下子章节：
+4.1 施工总体部署 — 施工阶段划分、流水段划分
+4.2 施工顺序安排 — 各工序的先后关系
+4.3 施工进度计划 — 时间节点、里程碑
+4.4 关键节点与里程碑 — 关键验收节点
+
+### 质量判据
+- 工期与工程规模匹配
+- 工序顺序逻辑正确（不能先砌墙后做基础）
+- 关键节点明确
+
+## 工程信息
+{{ standardized_input | tojson(indent=2) }}
+
+{% if key_details %}
+## 关键参数
+{{ key_details | tojson(indent=2) }}
+{% endif %}
+
+{% if regulations %}
+## 强制规范
+{% for reg in regulations %}
+- {{ reg.content }}
+{% endfor %}
+{% endif %}
+
+{% if cases %}
+## 参考案例
+{% for case in cases %}
+### 案例 {{ loop.index }}
+{{ case.content }}
+{% endfor %}
+{% endif %}
+
+{% if macro_view %}
+## 前序章节摘要
+{% for summary in macro_view %}
+{{ summary }}
+{% endfor %}
+{% endif %}
+
+{% include "static/output_format.txt" %}

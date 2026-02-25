@@ -1,0 +1,42 @@
+{# 第二章：工程概况 #}
+{% include "static/role.txt" %}
+
+## 当前章节：二、{{ chapter_title }}
+
+你需要生成以下子章节：
+2.1 工程简介 — 名称、地点、性质、建设内容
+2.2 工程规模 — 工程量、主要技术参数
+2.3 工程地质及地貌状况 — 地形、地质条件、气候
+2.4 参建单位 — 建设/设计/施工/监理单位
+
+### 质量判据
+- 工程名称全文一致
+- 技术参数完整（电压等级、容量、长度等关键参数不缺）
+- 地质条件与后续施工方法匹配
+
+## 工程信息
+{{ standardized_input | tojson(indent=2) }}
+
+{% if regulations %}
+## 强制规范
+{% for reg in regulations %}
+- {{ reg.content }}
+{% endfor %}
+{% endif %}
+
+{% if cases %}
+## 参考案例
+{% for case in cases %}
+### 案例 {{ loop.index }}
+{{ case.content }}
+{% endfor %}
+{% endif %}
+
+{% if macro_view %}
+## 前序章节摘要
+{% for summary in macro_view %}
+{{ summary }}
+{% endfor %}
+{% endif %}
+
+{% include "static/output_format.txt" %}

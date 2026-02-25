@@ -1,0 +1,51 @@
+{# 第六章：施工方法及工艺要求 #}
+{% include "static/role.txt" %}
+
+## 当前章节：六、{{ chapter_title }}
+
+你需要生成以下子章节：
+6.1 施工工艺流程 — 流程图、施工步骤
+6.2 主要施工方法 — 核心工序的详细步骤
+6.3 分项工程施工技术 — 各分项的技术要求
+6.4 技术措施 — 关键技术措施
+6.5 验收标准 — 每道工序的验收标准
+
+### 质量判据
+- 工艺流程完整（不能跳步骤）
+- 施工方法与地质条件匹配
+- 验收标准引用正确规范
+
+### 特别注意
+这是最难模板化的章节，必须根据工程类型（基础/安装/建筑/涂装等）选择合适的施工方法。核心内容需从参考案例中提取相似工程的写法。
+
+## 工程信息
+{{ standardized_input | tojson(indent=2) }}
+
+{% if key_details %}
+## 关键参数
+{{ key_details | tojson(indent=2) }}
+{% endif %}
+
+{% if regulations %}
+## 强制规范
+{% for reg in regulations %}
+- {{ reg.content }}
+{% endfor %}
+{% endif %}
+
+{% if cases %}
+## 参考案例
+{% for case in cases %}
+### 案例 {{ loop.index }}
+{{ case.content }}
+{% endfor %}
+{% endif %}
+
+{% if macro_view %}
+## 前序章节摘要
+{% for summary in macro_view %}
+{{ summary }}
+{% endfor %}
+{% endif %}
+
+{% include "static/output_format.txt" %}

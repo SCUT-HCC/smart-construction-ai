@@ -1,0 +1,47 @@
+{# 第五章：施工准备 #}
+{% include "static/role.txt" %}
+
+## 当前章节：五、{{ chapter_title }}
+
+你需要生成以下子章节：
+5.1 技术准备 — 图纸会审、技术交底、方案编制
+5.2 材料准备 — 采购计划、进场验收
+5.3 机械设备配置 — 设备清单、进场计划
+5.4 劳动力安排 — 人员需求、培训
+5.5 现场准备 — 三通一平、临时设施
+
+### 质量判据
+- 设备配置与施工方法匹配（第六章用什么设备这里就要准备什么）
+- 材料清单与工程量匹配
+
+## 工程信息
+{{ standardized_input | tojson(indent=2) }}
+
+{% if key_details %}
+## 关键参数
+{{ key_details | tojson(indent=2) }}
+{% endif %}
+
+{% if regulations %}
+## 强制规范
+{% for reg in regulations %}
+- {{ reg.content }}
+{% endfor %}
+{% endif %}
+
+{% if cases %}
+## 参考案例
+{% for case in cases %}
+### 案例 {{ loop.index }}
+{{ case.content }}
+{% endfor %}
+{% endif %}
+
+{% if macro_view %}
+## 前序章节摘要
+{% for summary in macro_view %}
+{{ summary }}
+{% endfor %}
+{% endif %}
+
+{% include "static/output_format.txt" %}

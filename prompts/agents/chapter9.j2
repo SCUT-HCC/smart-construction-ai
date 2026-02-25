@@ -1,0 +1,48 @@
+{# 第九章：应急预案与处置措施 #}
+{% include "static/role.txt" %}
+
+## 当前章节：九、{{ chapter_title }}
+
+你需要生成以下子章节：
+9.1 应急组织机构与职责 — 应急组织架构、职责分工
+9.2 应急响应程序 — 报告流程、响应级别
+9.3 应急处置措施 — 按事故类型分类处置（触电/坍塌/高坠/火灾/物体打击）
+9.4 应急物资准备 — 物资清单、存放位置
+9.5 应急演练计划 — 演练频次、内容
+
+### 质量判据
+- 应急类型覆盖该工程的所有风险（与第八章的危险源对应）
+- 每种事故有具体的处置措施（不是空洞的"立即报告"）
+- 物资清单完整
+
+## 工程信息
+{{ standardized_input | tojson(indent=2) }}
+
+{% if key_details %}
+## 关键参数
+{{ key_details | tojson(indent=2) }}
+{% endif %}
+
+{% if regulations %}
+## 强制规范
+{% for reg in regulations %}
+- {{ reg.content }}
+{% endfor %}
+{% endif %}
+
+{% if cases %}
+## 参考案例
+{% for case in cases %}
+### 案例 {{ loop.index }}
+{{ case.content }}
+{% endfor %}
+{% endif %}
+
+{% if macro_view %}
+## 前序章节摘要
+{% for summary in macro_view %}
+{{ summary }}
+{% endfor %}
+{% endif %}
+
+{% include "static/output_format.txt" %}

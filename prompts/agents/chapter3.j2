@@ -1,0 +1,41 @@
+{# 第三章：施工组织机构及职责 #}
+{% include "static/role.txt" %}
+
+## 当前章节：三、{{ chapter_title }}
+
+你需要生成以下子章节：
+3.1 项目组织架构 — 架构图（项目经理→各部门）
+3.2 项目管理人员职责 — 项目经理、总工程师、部门负责人的职责
+3.3 质量安全管理人员配置 — 质量员、安全员、技术员配置
+
+### 质量判据
+- 组织架构完整（项目经理、总工、安全/质量/技术负责人必须有）
+- 职责描述与工程类型匹配
+- 人员配置与工程规模匹配
+
+## 工程信息
+{{ standardized_input | tojson(indent=2) }}
+
+{% if regulations %}
+## 强制规范
+{% for reg in regulations %}
+- {{ reg.content }}
+{% endfor %}
+{% endif %}
+
+{% if cases %}
+## 参考案例
+{% for case in cases %}
+### 案例 {{ loop.index }}
+{{ case.content }}
+{% endfor %}
+{% endif %}
+
+{% if macro_view %}
+## 前序章节摘要
+{% for summary in macro_view %}
+{{ summary }}
+{% endfor %}
+{% endif %}
+
+{% include "static/output_format.txt" %}
